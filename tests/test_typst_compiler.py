@@ -248,14 +248,16 @@ class TestTypstCompilerIntegration:
     def mock_typ_file(self, tmp_path):
         """Create a mock .typ file"""
         typ_file = tmp_path / "presentation.typ"
-        typ_file.write_text("""
+        typ_file.write_text(
+            """
 #set page(paper: "presentation-16-9")
 #set text(size: 24pt)
 
 = Title Slide
 
 Hello, World!
-""")
+"""
+        )
         return typ_file
 
     def test_compile_merges_config_font_paths(self, tmp_path):

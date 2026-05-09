@@ -31,7 +31,8 @@ def write_ready_paper(path: Path) -> None:
     """Create a minimal configured paper repository."""
     (path / "main.tex").write_text("\\documentclass{article}\n")
     (path / "references.bib").write_text("@misc{test,title={Test}}\n")
-    (path / "pyproject.toml").write_text("""
+    (path / "pyproject.toml").write_text(
+        """
 [tool.article-cli.project]
 type = "article"
 
@@ -46,10 +47,12 @@ build_dir = "."
 api_key = "test-key"
 group_id = "4709047"
 output_file = "references.bib"
-""")
+"""
+    )
     workflow_dir = path / ".github" / "workflows"
     workflow_dir.mkdir(parents=True)
-    (workflow_dir / "latex.yml").write_text("""
+    (workflow_dir / "latex.yml").write_text(
+        """
 name: build
 on:
   push:
@@ -59,7 +62,8 @@ jobs:
     steps:
       - uses: astral-sh/setup-uv@v8.1.0
       - run: article-cli compile main.tex
-""")
+"""
+    )
 
 
 def test_doctor_reports_missing_git_repository_without_modifying_files(
@@ -121,10 +125,12 @@ def test_doctor_ready_repository_has_no_blocking_errors(tmp_path, monkeypatch):
 def test_doctor_json_output_is_machine_readable(tmp_path, monkeypatch, capsys):
     """doctor --json should not be polluted by config loading messages."""
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "pyproject.toml").write_text("""
+    (tmp_path / "pyproject.toml").write_text(
+        """
 [tool.article-cli.project]
 type = "article"
-""")
+"""
+    )
 
     exit_code = main(["doctor", "--json"])
 

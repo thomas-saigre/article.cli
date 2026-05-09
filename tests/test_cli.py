@@ -29,7 +29,8 @@ def test_compile_uses_project_config_when_cli_args_absent(tmp_path, monkeypatch)
     """Compile should honor configured document, engine, shell escape, and output."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / "paper.tex").write_text("\\documentclass{article}\n")
-    (tmp_path / "pyproject.toml").write_text("""
+    (tmp_path / "pyproject.toml").write_text(
+        """
 [tool.article-cli.documents]
 main = "paper.tex"
 
@@ -39,7 +40,8 @@ shell_escape = true
 
 [tool.article-cli.workflow]
 output_dir = "build"
-""")
+"""
+    )
     args = SimpleNamespace(
         tex_file=None,
         engine=None,
@@ -71,7 +73,8 @@ def test_compile_cli_args_override_project_config(tmp_path, monkeypatch):
     """Explicit CLI compile arguments should override project configuration."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / "paper.tex").write_text("\\documentclass{article}\n")
-    (tmp_path / "pyproject.toml").write_text("""
+    (tmp_path / "pyproject.toml").write_text(
+        """
 [tool.article-cli.documents]
 main = "paper.tex"
 
@@ -81,7 +84,8 @@ shell_escape = true
 
 [tool.article-cli.workflow]
 output_dir = "build"
-""")
+"""
+    )
     args = SimpleNamespace(
         tex_file="paper.tex",
         engine="pdflatex",
@@ -113,12 +117,14 @@ def test_update_bibtex_uses_configured_output_file(tmp_path, monkeypatch):
     """update-bibtex should not mask configured output_file with parser defaults."""
     clear_zotero_env(monkeypatch)
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "pyproject.toml").write_text("""
+    (tmp_path / "pyproject.toml").write_text(
+        """
 [tool.article-cli.zotero]
 api_key = "test-key"
 group_id = "4709047"
 output_file = "zotero/references.bib"
-""")
+"""
+    )
     args = SimpleNamespace(
         api_key=None,
         user_id=None,
@@ -146,12 +152,14 @@ def test_update_bibtex_cli_output_overrides_config(tmp_path, monkeypatch):
     """Explicit --output should override configured output_file."""
     clear_zotero_env(monkeypatch)
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "pyproject.toml").write_text("""
+    (tmp_path / "pyproject.toml").write_text(
+        """
 [tool.article-cli.zotero]
 api_key = "test-key"
 group_id = "4709047"
 output_file = "zotero/references.bib"
-""")
+"""
+    )
     args = SimpleNamespace(
         api_key=None,
         user_id=None,
