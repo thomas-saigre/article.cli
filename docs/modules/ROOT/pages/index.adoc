@@ -1,0 +1,33 @@
+= Article CLI
+:description: Manage reproducible LaTeX and Typst paper repositories with git, Zotero, CI, and release diagnostics.
+
+`article-cli` manages the operational lifecycle of scientific writing repositories.
+It initializes LaTeX or Typst papers, installs gitinfo2 hooks, synchronizes Zotero references, compiles PDFs, records version metadata, and creates checked paper releases.
+
+The tool is designed for repositories where the paper source, bibliography policy, build configuration, CI workflow, and release metadata are part of the same reproducibility contract.
+
+== Main Capabilities
+
+* Initialize article, presentation, poster, and Typst repositories from versioned templates.
+* Keep project policy in `pyproject.toml` under `[tool.article-cli]`.
+* Install managed git hooks for `gitinfo2` without replacing unrelated user hook logic.
+* Run `doctor` diagnostics, with optional safe repairs through `doctor --fix`.
+* Compile LaTeX and Typst documents with clear engine, output, page-count, citation, reference, and overfull-box diagnostics.
+* Synchronize deterministic BibTeX from Zotero, with optional local reference preservation.
+* Create checked release tags that refresh metadata, compile the PDF, verify the version string, and optionally write checksums.
+* Generate GitHub Actions workflows that use `uv`, build the document, upload artifacts, and optionally create GitHub releases.
+
+== Typical Workflow
+
+[source,console]
+----
+uv tool install article-cli
+article-cli init --title "My Paper" --authors "A. Author,B. Author"
+article-cli doctor --fix
+article-cli bib update
+article-cli compile
+article-cli release v1 --dry-run
+article-cli release v1
+----
+
+For the full workflow, see xref:lifecycle.adoc[].

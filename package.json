@@ -1,0 +1,17 @@
+{
+  "name": "article-cli-docs",
+  "version": "1.5.0",
+  "private": true,
+  "description": "Antora documentation site for article-cli",
+  "scripts": {
+    "docs:build": "antora antora-playbook.yml",
+    "docs:clean": "rm -rf build/site .cache/antora",
+    "docs:preview": "http-server build/site -c-1"
+  },
+  "devDependencies": {
+    "@antora/cli": "3.1.14",
+    "@antora/site-generator": "3.1.14",
+    "handlebars-utils": "1.0.6",
+    "http-server": "14.1.1"
+  }
+}

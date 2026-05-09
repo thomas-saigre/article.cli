@@ -1,0 +1,22 @@
+site:
+  title: Article CLI
+  url: https://feelpp.github.io/article.cli
+  start_page: article-cli::index.adoc
+
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: docs
+
+ui:
+  bundle:
+    url: https://github.com/feelpp/antora-ui/releases/download/v0.52/ui-bundle.zip
+    snapshot: true
+
+output:
+  dir: build/site
+
+runtime:
+  cache_dir: .cache/antora
+  fetch: true

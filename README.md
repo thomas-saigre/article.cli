@@ -19,9 +19,9 @@ A command-line tool for managing LaTeX and Typst documents with git integration 
 - **Lifecycle Commands**: Use `init`, `setup`, `doctor`, `bib update`, `compile`, `version`, and `release`
 - **LaTeX Build Management**: Clean build files and manage LaTeX compilation artifacts
 - **Git Hooks Setup**: Automated setup of git hooks for gitinfo2 integration
-- **Repository Diagnostics**: Read-only `doctor` checks for git, hooks, build tools, Zotero, workflows, and release readiness
+- **Repository Diagnostics**: `doctor` checks for git, hooks, build tools, Zotero, workflows, release readiness, and safe repairs with `--fix`
 - **Project Configuration**: Auto-generates pyproject.toml with article-cli settings
-- **Documentation**: Creates README with build instructions and usage guide
+- **Documentation**: Creates project README files and ships an Antora documentation site
 
 ## Installation
 
@@ -50,6 +50,18 @@ uv run mypy src
 uv build
 ```
 
+### Documentation Site
+
+The documentation site is built with Antora and the Feel++ Antora UI bundle:
+
+```bash
+npm install
+npm run docs:build
+npm run docs:preview
+```
+
+The generated site is written to `build/site`.
+
 ## Quick Start
 
 ### For New Projects
@@ -76,6 +88,7 @@ uv build
 3. **Setup git hooks and update bibliography**:
    ```bash
    article-cli doctor
+   article-cli doctor --fix
    article-cli setup --dry-run
    article-cli setup
    article-cli bib update --dry-run
@@ -89,6 +102,7 @@ uv build
 1. **Setup git hooks** (run once per repository):
    ```bash
    article-cli doctor
+   article-cli doctor --fix
    article-cli setup
    ```
 
@@ -397,6 +411,9 @@ article-cli doctor
 # Emit machine-readable diagnostics for CI
 article-cli doctor --json
 
+# Apply safe repairs for hooks, output directories, and gitHeadLocal.gin
+article-cli doctor --fix
+
 # Setup git hooks for gitinfo2
 article-cli setup
 
@@ -429,6 +446,7 @@ Use `[tool.article-cli.release] tag_policy = "semver"` when a repository must re
 - Git repository with gitinfo2 package (for LaTeX integration)
 - Zotero account with API access (for bibliography features)
 - Typst CLI (for Typst compilation) - install from https://typst.app/
+- Node.js 20+ for building the Antora documentation site
 
 ## License
 
@@ -445,10 +463,11 @@ MIT License - see LICENSE file for details.
 ## Changelog
 
 ### v1.5.0
-- Add read-only `doctor` diagnostics with JSON output
+- Add `doctor` diagnostics with JSON output and safe `--fix` repairs
 - Split CLI implementation into command modules
 - Make setup hooks more robust and worktree-safe
 - Standardize development and CI workflows on `uv`
+- Add an Antora documentation site using the Feel++ Antora UI
 
 ### v1.4.0
 - Add full Typst document compilation support

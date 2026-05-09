@@ -1,0 +1,13 @@
+* xref:index.adoc[Overview]
+* xref:install.adoc[Install]
+* xref:lifecycle.adoc[Paper Lifecycle]
+* Tutorials
+** xref:tutorials/new-paper.adoc[Initialize a New Paper]
+** xref:tutorials/existing-paper.adoc[Set Up an Existing Paper]
+** xref:tutorials/release-paper.adoc[Release a Paper]
+* xref:configuration.adoc[Configuration]
+* xref:migration.adoc[Migration Notes]
+* Reference
+** xref:reference/commands.adoc[Command Reference]
+** xref:reference/templates.adoc[Templates and Styles]
+** xref:reference/docs-site.adoc[Documentation Site]
