@@ -18,6 +18,7 @@ A command-line tool for managing LaTeX and Typst documents with git integration 
 - **Zotero Integration**: Synchronize bibliography from Zotero with robust pagination and error handling
 - **LaTeX Build Management**: Clean build files and manage LaTeX compilation artifacts
 - **Git Hooks Setup**: Automated setup of git hooks for gitinfo2 integration
+- **Repository Diagnostics**: Read-only `doctor` checks for git, hooks, build tools, Zotero, workflows, and release readiness
 - **Project Configuration**: Auto-generates pyproject.toml with article-cli settings
 - **Documentation**: Creates README with build instructions and usage guide
 
@@ -26,7 +27,7 @@ A command-line tool for managing LaTeX and Typst documents with git integration 
 ### From PyPI (recommended)
 
 ```bash
-pip install article-cli
+uv tool install article-cli
 ```
 
 ### From Source
@@ -34,7 +35,18 @@ pip install article-cli
 ```bash
 git clone https://github.com/feelpp/article.cli.git
 cd article.cli
-pip install -e .
+uv sync --all-extras --dev
+uv run article-cli --help
+```
+
+### Development Commands
+
+```bash
+uv sync --all-extras --dev
+uv run pytest
+uv run black --check src tests
+uv run mypy src
+uv build
 ```
 
 ## Quick Start
@@ -62,6 +74,7 @@ pip install -e .
 
 3. **Setup git hooks and update bibliography**:
    ```bash
+   article-cli doctor
    article-cli setup
    article-cli update-bibtex
    ```
@@ -72,6 +85,7 @@ pip install -e .
 
 1. **Setup git hooks** (run once per repository):
    ```bash
+   article-cli doctor
    article-cli setup
    ```
 
@@ -334,6 +348,12 @@ article-cli compile presentation.typ --font-path fonts/
 ### Project Setup
 
 ```bash
+# Diagnose repository readiness without modifying files
+article-cli doctor
+
+# Emit machine-readable diagnostics for CI
+article-cli doctor --json
+
 # Setup git hooks for gitinfo2
 article-cli setup
 

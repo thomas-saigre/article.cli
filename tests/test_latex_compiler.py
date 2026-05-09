@@ -192,6 +192,19 @@ class TestLaTeXCompilerEngines:
 
         assert result is False
 
+    def test_compile_refreshes_gitinfo2_metadata(self, compiler, mock_tex_path):
+        """Test compile refreshes gitinfo2 metadata before building"""
+        with patch(
+            "article_cli.latex_compiler.refresh_gitinfo2_metadata", return_value=True
+        ) as refresh_mock, patch.object(
+            compiler, "_compile_once", return_value=True
+        ) as compile_mock:
+            result = compiler.compile(str(mock_tex_path), engine="latexmk")
+
+        refresh_mock.assert_called_once_with(mock_tex_path.parent)
+        compile_mock.assert_called_once_with(mock_tex_path, "latexmk", False, None)
+        assert result is True
+
     # --- Test _compile_watch restrictions ---
 
     def test_compile_watch_rejects_pdflatex(self, compiler, mock_tex_path):

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .config import Config
+from .git_hooks import gitinfo2_metadata_summary, refresh_gitinfo2_metadata
 from .zotero import print_error, print_info, print_success
 
 
@@ -26,6 +27,7 @@ class LaTeXCompiler:
         """
         self.config = config
         self.latex_config = config.get_latex_config()
+        self.timeout = int(self.latex_config.get("timeout", 300))
 
     def compile(
         self,
@@ -54,6 +56,11 @@ class LaTeXCompiler:
             return False
 
         print_info(f"Compiling {tex_file} with {engine}...")
+        if refresh_gitinfo2_metadata(tex_path.parent):
+            print_info("Updated gitinfo2 metadata")
+            summary = gitinfo2_metadata_summary(tex_path.parent)
+            if summary:
+                print_info(f"Version metadata: {summary}")
 
         if watch:
             return self._compile_watch(tex_path, engine, shell_escape, output_dir)
@@ -141,7 +148,7 @@ class LaTeXCompiler:
                 cwd=tex_path.parent,
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout
+                timeout=self.timeout,
             )
 
             if result.returncode == 0:
@@ -170,7 +177,7 @@ class LaTeXCompiler:
                 return False
 
         except subprocess.TimeoutExpired:
-            print_error("Compilation timed out after 5 minutes")
+            print_error(f"Compilation timed out after {self.timeout} seconds")
             return False
         except Exception as e:
             print_error(f"Compilation error: {e}")
@@ -193,7 +200,7 @@ class LaTeXCompiler:
                     cwd=tex_path.parent,
                     capture_output=True,
                     text=True,
-                    timeout=120,  # 2 minute timeout per pass
+                    timeout=self.timeout,
                 )
 
                 if result.returncode != 0:
@@ -321,7 +328,7 @@ class LaTeXCompiler:
                     cwd=tex_path.parent,
                     capture_output=True,
                     text=True,
-                    timeout=120,  # 2 minute timeout per pass
+                    timeout=self.timeout,
                 )
 
                 if result.returncode != 0:
@@ -400,7 +407,7 @@ class LaTeXCompiler:
                     cwd=tex_path.parent,
                     capture_output=True,
                     text=True,
-                    timeout=120,  # 2 minute timeout per pass
+                    timeout=self.timeout,
                 )
 
                 if result.returncode != 0:

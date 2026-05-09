@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import List, Optional
 import shutil
 
+from .git_hooks import (
+    ensure_gitinfo2_hook_source,
+    gitinfo2_metadata_summary,
+    install_managed_gitinfo2_hook,
+    refresh_gitinfo2_metadata,
+)
 from .zotero import print_success, print_error, print_warning, print_info, Colors
 
 
@@ -23,72 +29,77 @@ class GitManager:
         Args:
             repo_root: Repository root directory (defaults to current directory)
         """
-        self.repo_root = repo_root or Path.cwd()
-        self._validate_git_repo()
+        self.repo_root = self._resolve_git_root(repo_root or Path.cwd())
 
-    def _validate_git_repo(self) -> None:
-        """Validate that the current directory is a git repository"""
-        git_dir = self.repo_root / ".git"
-        if not git_dir.exists():
-            raise ValueError(f"Not a git repository: {self.repo_root}")
+    def _resolve_git_root(self, start_path: Path) -> Path:
+        """Resolve the Git repository root, including linked worktrees."""
+        cwd = start_path if start_path.is_dir() else start_path.parent
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except (FileNotFoundError, OSError) as e:
+            raise ValueError("Git is required but was not found") from e
+
+        if result.returncode != 0:
+            details = result.stderr.strip() or str(start_path)
+            raise ValueError(f"Not a git repository: {details}")
+
+        return Path(result.stdout.strip()).resolve()
+
+    def _git_path(self, path: str) -> Path:
+        """Resolve a Git metadata path using git rev-parse --git-path."""
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-path", path],
+            cwd=self.repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        git_path = Path(result.stdout.strip())
+        if not git_path.is_absolute():
+            git_path = self.repo_root / git_path
+        return git_path.resolve()
 
     def setup_hooks(self) -> bool:
         """Setup git hooks for gitinfo2"""
         try:
-            hooks_dir = self.repo_root / "hooks"
-            git_hooks_dir = self.repo_root / ".git" / "hooks"
+            git_hooks_dir = self._git_path("hooks")
+            git_hooks_dir.mkdir(parents=True, exist_ok=True)
+            post_commit_src = ensure_gitinfo2_hook_source(self.repo_root)
 
-            if not hooks_dir.exists():
-                print_error(f"Hooks directory not found: {hooks_dir}")
-                return False
-
-            if not git_hooks_dir.exists():
-                print_error("Git hooks directory missing")
-                return False
-
-            post_commit_src = hooks_dir / "post-commit"
-            if not post_commit_src.exists():
-                print_error(f"Source hook not found: {post_commit_src}")
-                return False
-
-            # Copy and make executable
             for hook_name in ["post-commit", "post-checkout", "post-merge"]:
                 dest = git_hooks_dir / hook_name
+                status = install_managed_gitinfo2_hook(post_commit_src, dest)
+                if status == "created":
+                    print_success(f"Installed hook: {hook_name}")
+                elif status == "updated":
+                    print_success(f"Updated managed hook: {hook_name}")
+                elif status == "merged":
+                    print_success(
+                        f"Preserved existing hook and added managed block: {hook_name}"
+                    )
+                else:
+                    print_info(f"Hook already current: {hook_name}")
 
-                with open(post_commit_src, "r") as src:
-                    with open(dest, "w") as dst:
-                        dst.write(src.read())
-
-                dest.chmod(0o755)
-                print_success(f"Installed hook: {hook_name}")
-
-            # Run git checkout to trigger hooks
-            subprocess.run(["git", "checkout"], check=True, cwd=self.repo_root)
-
-            # Check for gitHeadInfo.gin
-            git_head_info = self.repo_root / ".git" / "gitHeadInfo.gin"
-            if not git_head_info.exists():
-                print_warning("gitHeadInfo.gin not found, skipping local copy")
+            if refresh_gitinfo2_metadata(self.repo_root):
+                print_success("Refreshed gitHeadLocal.gin")
+                summary = gitinfo2_metadata_summary(self.repo_root)
+                if summary:
+                    print_info(f"Version metadata: {summary}")
+                print_info(
+                    "gitHeadLocal.gin was not committed; commit it explicitly if your "
+                    "paper policy tracks generated metadata."
+                )
             else:
-                local_copy = self.repo_root / "gitHeadLocal.gin"
-                with open(git_head_info, "r") as src:
-                    with open(local_copy, "w") as dst:
-                        dst.write(src.read())
-
-                subprocess.run(
-                    ["git", "add", "gitHeadLocal.gin"], check=True, cwd=self.repo_root
+                print_warning(
+                    "Could not refresh gitHeadLocal.gin yet. This is expected before "
+                    "the first commit."
                 )
-                subprocess.run(
-                    [
-                        "git",
-                        "commit",
-                        "-m",
-                        "Created gitHeadLocal.gin for initial setup",
-                    ],
-                    check=True,
-                    cwd=self.repo_root,
-                )
-                print_success("Created and committed gitHeadLocal.gin")
 
             return True
 

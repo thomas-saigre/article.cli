@@ -13,8 +13,7 @@ import time
 try:
     import requests
 except ImportError:
-    print("Error: 'requests' library is required. Install with: pip install requests")
-    sys.exit(1)
+    requests = None  # type: ignore[assignment]
 
 
 class Colors:
@@ -66,6 +65,11 @@ class ZoteroBibTexUpdater:
             raise ValueError("API key is required")
         if not user_id and not group_id:
             raise ValueError("Either user_id or group_id is required")
+        if requests is None:
+            raise RuntimeError(
+                "'requests' library is required for Zotero synchronization. "
+                "Install development dependencies with: uv sync --all-extras --dev"
+            )
 
         self.api_key = api_key
         self.user_id = user_id

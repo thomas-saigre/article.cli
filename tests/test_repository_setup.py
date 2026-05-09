@@ -4,10 +4,29 @@ Tests for article-cli repository setup module
 Tests project type support including article, presentation, and poster templates.
 """
 
+import subprocess
+import shutil
 import tempfile
 from pathlib import Path
 
+from article_cli.git_hooks import refresh_gitinfo2_metadata
+from article_cli.git_manager import GitManager
 from article_cli.repository_setup import RepositorySetup
+
+
+def init_git_repository(path: Path) -> None:
+    """Create a real git repository for hook tests."""
+    subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=path,
+        check=True,
+    )
 
 
 class TestRepositorySetupProjectTypes:
@@ -374,6 +393,167 @@ class TestVSCodeSettingsGeneration:
 
             assert "latexmk-xelatex" in content
             assert '"-xelatex"' in content
+
+
+class TestGitHookSetup:
+    """Test cases for gitinfo2 hook generation and installation"""
+
+    def test_create_git_hooks_creates_missing_hooks_directory(self, tmp_path):
+        """Test repository setup creates hooks/post-commit when hooks is missing"""
+        setup = RepositorySetup(tmp_path)
+
+        result = setup._create_git_hooks(False)
+
+        post_commit = tmp_path / "hooks" / "post-commit"
+        assert result is True
+        assert post_commit.exists()
+        assert "gitHeadInfo.gin" in post_commit.read_text()
+        assert post_commit.stat().st_mode & 0o111
+
+    def test_setup_hooks_bootstraps_missing_hooks_directory(self, tmp_path):
+        """Test article-cli setup creates source hooks before installing them"""
+        init_git_repository(tmp_path)
+        git_hooks_dir = tmp_path / ".git" / "hooks"
+        shutil.rmtree(git_hooks_dir)
+
+        manager = GitManager(tmp_path)
+
+        result = manager.setup_hooks()
+
+        assert result is True
+        assert (tmp_path / "hooks" / "post-commit").exists()
+        for hook_name in ["post-commit", "post-checkout", "post-merge"]:
+            installed_hook = git_hooks_dir / hook_name
+            assert installed_hook.exists()
+            assert "gitHeadInfo.gin" in installed_hook.read_text()
+            assert installed_hook.stat().st_mode & 0o111
+
+    def test_setup_hooks_preserves_existing_user_hook(self, tmp_path):
+        """Test setup appends a managed block without overwriting user hooks"""
+        init_git_repository(tmp_path)
+        git_hooks_dir = tmp_path / ".git" / "hooks"
+        user_hook = git_hooks_dir / "post-commit"
+        user_hook.write_text("#!/bin/sh\necho user hook\n")
+        user_hook.chmod(0o755)
+
+        manager = GitManager(tmp_path)
+
+        result = manager.setup_hooks()
+
+        content = user_hook.read_text()
+        assert result is True
+        assert "echo user hook" in content
+        assert "# >>> article-cli gitinfo2 hook >>>" in content
+        assert "gitHeadInfo.gin" in content
+
+    def test_setup_hooks_is_idempotent(self, tmp_path):
+        """Test repeated setup updates managed hooks without duplicating blocks"""
+        init_git_repository(tmp_path)
+        manager = GitManager(tmp_path)
+
+        assert manager.setup_hooks() is True
+        assert manager.setup_hooks() is True
+
+        installed_hook = tmp_path / ".git" / "hooks" / "post-commit"
+        content = installed_hook.read_text()
+        assert content.count("# >>> article-cli gitinfo2 hook >>>") == 1
+        assert content.count("# <<< article-cli gitinfo2 hook <<<") == 1
+
+    def test_setup_hooks_supports_linked_worktree(self, tmp_path):
+        """Test setup resolves git root and hook path in linked worktrees"""
+        main_repo = tmp_path / "main"
+        worktree_repo = tmp_path / "worktree"
+        main_repo.mkdir()
+        init_git_repository(main_repo)
+        (main_repo / "README.md").write_text("initial\n")
+        subprocess.run(["git", "add", "README.md"], cwd=main_repo, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "initial"],
+            cwd=main_repo,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "worktree", "add", str(worktree_repo)],
+            cwd=main_repo,
+            check=True,
+            capture_output=True,
+        )
+
+        manager = GitManager(worktree_repo)
+
+        result = manager.setup_hooks()
+
+        hook_path = subprocess.run(
+            ["git", "rev-parse", "--git-path", "hooks/post-commit"],
+            cwd=worktree_repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        installed_hook = Path(hook_path)
+        if not installed_hook.is_absolute():
+            installed_hook = worktree_repo / installed_hook
+
+        assert result is True
+        assert manager.repo_root == worktree_repo.resolve()
+        assert installed_hook.exists()
+        assert "gitHeadInfo.gin" in installed_hook.read_text()
+
+    def test_refresh_gitinfo2_metadata_updates_local_copy(self, tmp_path):
+        """Test refresh runs the hook and copies gitHeadInfo.gin locally"""
+        git_dir = tmp_path / ".git"
+        hooks_dir = tmp_path / "hooks"
+        git_dir.mkdir()
+        hooks_dir.mkdir()
+
+        hook = hooks_dir / "post-commit"
+        hook.write_text(
+            "#!/bin/sh\n"
+            "cat > .git/gitHeadInfo.gin <<'EOF'\n"
+            "\\usepackage[firsttagdescribe={v0.5.0}]{gitexinfo}\n"
+            "EOF\n"
+        )
+
+        result = refresh_gitinfo2_metadata(tmp_path)
+
+        assert result is True
+        assert (tmp_path / "gitHeadLocal.gin").read_text() == (
+            "\\usepackage[firsttagdescribe={v0.5.0}]{gitexinfo}\n"
+        )
+
+    def test_refresh_gitinfo2_metadata_ignores_dirty_local_copy(self, tmp_path):
+        """Test gitHeadLocal.gin alone does not mark the version dirty"""
+        subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=tmp_path,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"],
+            cwd=tmp_path,
+            check=True,
+        )
+        (tmp_path / "main.tex").write_text("\\documentclass{article}\n")
+        (tmp_path / "gitHeadLocal.gin").write_text("stale\n")
+        subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "initial"],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(["git", "tag", "v0.5.0"], cwd=tmp_path, check=True)
+        (tmp_path / "gitHeadLocal.gin").write_text("dirty local metadata\n")
+
+        result = refresh_gitinfo2_metadata(tmp_path)
+
+        content = (tmp_path / "gitHeadLocal.gin").read_text()
+        assert result is True
+        assert "firsttagdescribe={v0.5.0}" in content
+        assert "reltag={v0.5.0-0-" in content
+        assert "-*}" not in content
 
 
 class TestFullRepositoryInit:

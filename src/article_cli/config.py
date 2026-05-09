@@ -21,14 +21,19 @@ except ImportError:
 class Config:
     """Configuration manager for article-cli"""
 
-    def __init__(self, config_file: Optional[Union[str, Path]] = None):
+    def __init__(
+        self, config_file: Optional[Union[str, Path]] = None, quiet: bool = False
+    ):
         """
         Initialize configuration manager
 
         Args:
             config_file: Optional path to configuration file
+            quiet: Suppress informational config-loading messages
         """
         self.config_file = config_file
+        self.quiet = quiet
+        self.loaded_config_file: Optional[Path] = None
         self._config_data: Dict[str, Any] = {}
         self._load_config()
 
@@ -60,6 +65,7 @@ class Config:
     def _load_config(self) -> None:
         """Load configuration from file if it exists"""
         config_path = self._find_config_file()
+        self.loaded_config_file = config_path.resolve() if config_path else None
 
         if config_path and tomllib:
             try:
@@ -73,9 +79,10 @@ class Config:
                         "article-cli", {}
                     )
                     if self._config_data:
-                        print(
-                            f"Loaded configuration from: {config_path} [tool.article-cli]"
-                        )
+                        if not self.quiet:
+                            print(
+                                f"Loaded configuration from: {config_path} [tool.article-cli]"
+                            )
                     else:
                         # Fallback: look for legacy sections at root level
                         legacy_sections = ["zotero", "git", "latex"]
@@ -83,19 +90,25 @@ class Config:
                             k: v for k, v in full_config.items() if k in legacy_sections
                         }
                         if self._config_data:
-                            print(f"Loaded legacy configuration from: {config_path}")
+                            if not self.quiet:
+                                print(
+                                    f"Loaded legacy configuration from: {config_path}"
+                                )
                 else:
                     # Dedicated config file - use as-is
                     self._config_data = full_config
-                    print(f"Loaded configuration from: {config_path}")
+                    if not self.quiet:
+                        print(f"Loaded configuration from: {config_path}")
 
             except Exception as e:
-                print(f"Warning: Could not load config file {config_path}: {e}")
+                if not self.quiet:
+                    print(f"Warning: Could not load config file {config_path}: {e}")
                 self._config_data = {}
         elif config_path and not tomllib:
-            print(
-                "Warning: TOML support not available. Install with: pip install tomli"
-            )
+            if not self.quiet:
+                print(
+                    "Warning: TOML support not available. Install dependencies with: uv sync"
+                )
             self._config_data = {}
         else:
             self._config_data = {}

@@ -10,6 +10,15 @@ import pytest
 
 from article_cli.config import Config
 
+ZOTERO_ENV_VARS = ("ZOTERO_API_KEY", "ZOTERO_USER_ID", "ZOTERO_GROUP_ID")
+
+
+@pytest.fixture(autouse=True)
+def isolate_zotero_environment(monkeypatch):
+    """Keep config tests independent from developer or CI Zotero credentials."""
+    for var in ZOTERO_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+
 
 class TestConfig:
     """Test cases for Config class"""

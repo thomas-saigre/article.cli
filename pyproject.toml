@@ -11,7 +11,7 @@ authors = [
 description = "CLI tool for managing LaTeX and Typst documents with git integration and Zotero bibliography"
 readme = "README.md"
 license = {file = "LICENSE"}
-requires-python = ">=3.8"
+requires-python = ">=3.8.1"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -29,6 +29,8 @@ classifiers = [
 keywords = ["latex", "typst", "git", "zotero", "bibliography", "academic", "research", "presentations"]
 dependencies = [
     "requests>=2.28.0",
+    "PyYAML>=6.0",
+    "tomli>=2.0.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +39,9 @@ dev = [
     "pytest-cov",
     "black>=23.0",
     "flake8>=6.0",
-    "mypy>=1.0",
+    "mypy>=1.0,<2.0",
+    "build>=1.2.0",
+    "twine>=5.0.0",
     "types-requests",
 ]
 
@@ -101,6 +105,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

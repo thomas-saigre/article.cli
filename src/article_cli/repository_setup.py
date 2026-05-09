@@ -11,6 +11,7 @@ Provides functionality to initialize LaTeX article repositories with:
 from pathlib import Path
 from typing import List, Optional
 
+from .git_hooks import ensure_gitinfo2_hook_source
 from .zotero import print_error, print_info, print_success
 
 
@@ -1015,7 +1016,7 @@ jobs:
           uv venv .venv --python 3.11
           echo "VIRTUAL_ENV=${{PWD}}/.venv" >> $GITHUB_ENV
           echo "${{PWD}}/.venv/bin" >> $GITHUB_PATH
-          uv pip install "article-cli>=1.1.0"
+          uv pip install "article-cli>=1.4.0"
           end_time=$(date +%s)
           duration=$((end_time - start_time))
 
@@ -1023,7 +1024,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Tool**: UV (fast Python package installer)" >> $GITHUB_STEP_SUMMARY
           echo "- **Python**: 3.11 (isolated virtual environment)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: article-cli>=1.1.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: article-cli>=1.4.0" >> $GITHUB_STEP_SUMMARY
           echo "- **Duration**: ${{duration}}s" >> $GITHUB_STEP_SUMMARY
           echo "- **Cache**: Enabled for faster subsequent runs" >> $GITHUB_STEP_SUMMARY
 
@@ -1233,7 +1234,7 @@ jobs:
           uv venv .venv --python 3.11
           echo "VIRTUAL_ENV=${{PWD}}/.venv" >> $GITHUB_ENV
           echo "${{PWD}}/.venv/bin" >> $GITHUB_PATH
-          uv pip install "article-cli>=1.1.0"
+          uv pip install "article-cli>=1.4.0"
           end_time=$(date +%s)
           duration=$((end_time - start_time))
 
@@ -1465,7 +1466,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "article-cli>=1.2.0",
+    "article-cli>=1.4.0",
     # Add other dependencies your project might need:
     # "matplotlib>=3.5.0",
     # "numpy>=1.20.0",
@@ -1557,7 +1558,7 @@ This repository contains the LaTeX source for the {doc_type} "{title}".
 
 1. **Install article-cli**:
    ```bash
-   pip install article-cli
+   uv tool install article-cli
    ```
 
 2. **Setup git hooks**:
@@ -1965,56 +1966,5 @@ parametrical
         Returns:
             True if successful
         """
-        post_commit_path = self.repo_path / "hooks" / "post-commit"
-
-        if post_commit_path.exists() and not force:
-            print_info("hooks/post-commit already exists (use --force to overwrite)")
-            return True
-
-        # gitinfo2 post-commit hook
-        post_commit_content = """#!/bin/sh
-# Copyright 2015 Brent Longborough
-# Part of gitinfo2 package Version 2
-# Release 2.0.7 2015-11-22
-# Please read gitinfo2.pdf for licencing and other details
-# -----------------------------------------------------
-# Post-{commit,checkout,merge} hook for the gitinfo2 package
-#
-# Get the first tag found in the history from the current HEAD
-FIRSTTAG=$(git describe --tags --always --dirty='-*' 2>/dev/null)
-# Get the first tag in history that looks like a Release
-RELTAG=$(git describe --tags --long --always --dirty='-*' --match 'v[0-9]*\\.[0-9]*\\.[0-9]*' 2>/dev/null)
-# Hoover up the metadata
-git --no-pager log -1 --date=short --decorate=short \\
-    --pretty=format:"\\usepackage[%
-        shash={%h},
-        lhash={%H},
-        authname={%an},
-        authemail={%ae},
-        authsdate={%ad},
-        authidate={%ai},
-        authudate={%at},
-        commname={%cn},
-        commemail={%ce},
-        commsdate={%cd},
-        commidate={%ci},
-        commudate={%ct},
-        refnames={%d},
-        firsttagdescribe={$FIRSTTAG},
-        reltag={$RELTAG}
-    ]{gitexinfo}" HEAD > .git/gitHeadInfo.gin
-"""
-
-        post_commit_path.write_text(post_commit_content)
-
-        # Make the hook executable
-        import stat
-
-        post_commit_path.chmod(
-            post_commit_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-        )
-
-        print_success(f"Created: {post_commit_path.relative_to(self.repo_path)}")
-        print_info("Made post-commit hook executable")
-
+        ensure_gitinfo2_hook_source(self.repo_path, force)
         return True
