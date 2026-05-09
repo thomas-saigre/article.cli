@@ -1,6 +1,6 @@
 {
   "name": "article-cli-docs",
-  "version": "1.5.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Antora documentation site for article-cli",
   "scripts": {

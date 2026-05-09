@@ -17,7 +17,7 @@ from .git_hooks import ensure_gitinfo2_hook_source
 from .template_renderer import TEMPLATE_VERSION, TemplateRenderer
 from .reporting import print_error, print_info, print_success
 
-ARTICLE_CLI_MIN_VERSION = "1.5.0"
+ARTICLE_CLI_MIN_VERSION = "2.0.1"
 ARTICLE_TEMPLATES = {
     ("article", "default"): "article/main.tex.j2",
     ("article", "lncs"): "article/lncs.tex.j2",

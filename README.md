@@ -462,6 +462,18 @@ MIT License - see LICENSE file for details.
 
 ## Changelog
 
+### v2.0.1
+- Keep Python package, generated-template minimum version, Antora component version, docs package version, and lockfiles synchronized
+- Add a release-version bump script and CI test to prevent stale documentation version labels
+
+### v2.0.0
+- Treat the paper lifecycle as explicit commands: `init`, `setup`, `doctor`, `bib update`, `compile`, `version`, and `release`
+- Add safe `doctor --fix` repairs for output directories, managed git hooks, and `gitHeadLocal.gin`
+- Make `release` the checked paper release workflow and keep `create` as a deprecated compatibility alias
+- Drop Python 3.8 support; test Python 3.9 through 3.13
+- Move generated templates and workflows to package Jinja2 resources
+- Add Antora documentation with Feel++ Antora UI
+
 ### v1.5.0
 - Add `doctor` diagnostics with JSON output and safe `--fix` repairs
 - Split CLI implementation into command modules

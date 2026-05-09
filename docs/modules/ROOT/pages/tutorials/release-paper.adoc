@@ -13,6 +13,50 @@ article-cli release v1 --dry-run
 
 The dry run does not create tags, commits, builds, checksums, pushes, or GitHub releases.
 
+== Bump Project and Documentation Versions
+
+For an `article-cli` package release, update all public version surfaces before tagging:
+
+[source,console]
+----
+uv run python scripts/bump_version.py X.Y.Z
+----
+
+This updates `pyproject.toml`, `src/article_cli/__init__.py`, generated-template minimum version, `docs/antora.yml`, `package.json`, and `package-lock.json`.
+
+The files updated by the script are equivalent to these manual edits:
+
+[source,toml]
+----
+# pyproject.toml
+[project]
+version = "X.Y.Z"
+----
+
+[source,yaml]
+----
+# docs/antora.yml
+version: 'X.Y'
+
+asciidoc:
+  attributes:
+    article-cli-version: 'X.Y.Z'
+----
+
+[source,json]
+----
+{
+  "version": "X.Y.Z"
+}
+----
+
+After changing `package.json`, refresh `package-lock.json`:
+
+[source,console]
+----
+npm install --package-lock-only
+----
+
 == Create a Local Release
 
 [source,console]

@@ -1,6 +1,6 @@
 name: article-cli
 title: Article CLI
-version: '1.5'
+version: '2.0'
 start_page: ROOT:index.adoc
 nav:
   - modules/ROOT/nav.adoc
@@ -10,7 +10,7 @@ asciidoc:
     project-name: article-cli
     cli-command: article-cli
     python-supported: '3.9, 3.10, 3.11, 3.12, 3.13'
-    article-cli-version: '1.5.0'
+    article-cli-version: '2.0.1'
     template-version: '1'
     zotero-group-example: '4709047'
     page-pagination: ''

@@ -14,7 +14,7 @@ import yaml
 
 from article_cli.git_hooks import refresh_gitinfo2_metadata
 from article_cli.git_manager import GitManager
-from article_cli.repository_setup import RepositorySetup
+from article_cli.repository_setup import ARTICLE_CLI_MIN_VERSION, RepositorySetup
 from article_cli.template_renderer import TEMPLATE_VERSION
 
 try:
@@ -52,7 +52,7 @@ def assert_generated_project_files_parse(root: Path) -> None:
         assert settings["typst-lsp.exportPdf"] == "onSave"
     assert workflow["jobs"]["build_document"]
     assert "${{ github.ref_name }}" in workflow_text
-    assert "article-cli>=1.5.0" in workflow_text
+    assert f"article-cli>={ARTICLE_CLI_MIN_VERSION}" in workflow_text
 
 
 class TestRepositorySetupProjectTypes:
