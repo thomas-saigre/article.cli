@@ -166,100 +166,69 @@ class GitManager:
         self, version: str, auto_push: bool = False, dry_run: bool = False
     ) -> bool:
         """
-        Create a new release with the given version
+        Create a new release with the given version.
+
+        This legacy entrypoint is intentionally conservative. The full checked
+        paper release workflow lives in ReleaseService and is used by the CLI.
 
         Args:
-            version: Version string (e.g., 'v1.0.0')
+            version: Version string (e.g., 'v1' or 'v1.0.0')
             auto_push: Whether to automatically push the release
             dry_run: Validate and report actions without creating a release
 
         Returns:
             True if successful, False otherwise
         """
-        # Validate version format
-        if not re.match(r"^v\d+\.\d+\.\d+(-[a-z]+\.\d+)?$", version):
+        if not re.match(
+            r"^v\d+(?:\.\d+){0,2}(?:[-._]?(?:alpha|beta|rc|pre|preview)\.?\d*)?$",
+            version,
+        ):
             print_error(f"Invalid version format: {version}")
-            print_info("Expected format: vX.Y.Z or vX.Y.Z-pre.N")
+            print_info("Expected examples: v1, v1.0, v1.0.0, v1.0.0-rc.1")
             return False
 
         try:
-            # Check if tag exists
-            result = subprocess.run(
-                ["git", "rev-parse", version], capture_output=True, cwd=self.repo_root
-            )
-            if result.returncode == 0:
+            if self.tag_exists(version):
                 print_error(f"Tag {version} already exists")
+                return False
+
+            dirty_files = self.dirty_files(ignore_gitinfo=True)
+            if dirty_files:
+                print_error("Tracked or untracked files are dirty.")
+                for dirty_file in dirty_files:
+                    print_info(f"  {dirty_file}")
                 return False
 
             if dry_run:
                 print_info("Dry run: no tags, commits, or metadata files were changed.")
                 print_info(f"Would create annotated tag: {version}")
-                print_info("Would refresh gitHeadLocal.gin after tagging.")
+                print_info("Would refresh gitHeadLocal.gin before and after tagging.")
                 if auto_push:
-                    print_info("Would push with: git push origin --follow-tags")
+                    print_info(f"Would push with: git push origin {version}")
                 else:
                     print_info("Would leave push to the user.")
                 return True
 
-            # Create tag
-            subprocess.run(
-                ["git", "tag", "-a", version, "-m", f"Release {version}"],
-                check=True,
-                cwd=self.repo_root,
-            )
+            if not refresh_gitinfo2_metadata(self.repo_root):
+                print_warning("Could not refresh gitHeadLocal.gin before tagging.")
+
+            self.create_tag(version)
             print_success(f"Created tag: {version}")
 
-            # Trigger hooks
-            subprocess.run(["git", "checkout"], check=True, cwd=self.repo_root)
-
-            # Copy gitHeadInfo
-            git_head_info = self.repo_root / ".git" / "gitHeadInfo.gin"
-            if git_head_info.exists():
-                local_copy = self.repo_root / "gitHeadLocal.gin"
-                with open(git_head_info, "r") as src:
-                    content = src.read()
-                    with open(local_copy, "w") as dst:
-                        dst.write(content)
-
-                    # Show reltag
-                    for line in content.split("\n"):
-                        if "reltag" in line:
-                            print_info(f"Release tag: {line}")
-
-                subprocess.run(
-                    ["git", "add", "gitHeadLocal.gin"], check=True, cwd=self.repo_root
-                )
-                subprocess.run(
-                    [
-                        "git",
-                        "commit",
-                        "-m",
-                        f"Updated gitHeadLocal.gin for release {version}",
-                    ],
-                    check=True,
-                    cwd=self.repo_root,
-                )
-                subprocess.run(
-                    ["git", "tag", "-f", "-a", version, "-m", f"Release {version}"],
-                    check=True,
-                    cwd=self.repo_root,
-                )
+            if refresh_gitinfo2_metadata(self.repo_root):
+                summary = gitinfo2_metadata_summary(self.repo_root)
+                if summary:
+                    print_info(f"Version metadata: {summary}")
+            else:
+                print_warning("Could not refresh gitHeadLocal.gin after tagging.")
 
             print_success(f"Release {version} created successfully")
 
             if auto_push:
-                try:
-                    subprocess.run(
-                        ["git", "push", "origin", "--follow-tags"],
-                        check=True,
-                        cwd=self.repo_root,
-                    )
-                    print_success("Release pushed to remote")
-                except subprocess.CalledProcessError as e:
-                    print_warning(f"Failed to push release: {e}")
-                    print_info("Push manually with: git push origin --follow-tags")
+                self.push_tag(version)
+                print_success("Release pushed to remote")
             else:
-                print_info("Push with: git push origin --follow-tags")
+                print_info(f"Push with: git push origin {version}")
 
             return True
 
@@ -285,6 +254,66 @@ class GitManager:
         if result.returncode != 0:
             return None
         return result.stdout.strip()
+
+    def git(
+        self,
+        args: List[str],
+        check: bool = False,
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> subprocess.CompletedProcess:
+        """Run a git command in the managed repository."""
+        return subprocess.run(
+            ["git", *args],
+            capture_output=capture_output,
+            text=text,
+            check=check,
+            cwd=self.repo_root,
+        )
+
+    def tag_exists(self, tag: str) -> bool:
+        """Return whether a tag already exists."""
+        result = self.git(["rev-parse", "--verify", f"refs/tags/{tag}"])
+        return result.returncode == 0
+
+    def create_tag(self, tag: str, force: bool = False) -> bool:
+        """Create or update an annotated tag."""
+        args = ["tag"]
+        if force:
+            args.append("-f")
+        args.extend(["-a", tag, "-m", f"Release {tag}"])
+        self.git(args, check=True, capture_output=False, text=True)
+        return True
+
+    def delete_tag(self, tag: str) -> bool:
+        """Delete a local tag."""
+        self.git(["tag", "-d", tag], check=True, capture_output=True, text=True)
+        return True
+
+    def dirty_files(self, ignore_gitinfo: bool = True) -> List[str]:
+        """Return dirty tracked/untracked files, optionally ignoring gitHeadLocal.gin."""
+        pathspec = ["--", "."]
+        if ignore_gitinfo:
+            pathspec.append(":(exclude)gitHeadLocal.gin")
+        result = self.git(["status", "--porcelain", *pathspec])
+        if result.returncode != 0:
+            return ["<could not inspect git status>"]
+        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    def commit_paths(self, paths: List[str], message: str) -> bool:
+        """Commit selected paths."""
+        self.git(["add", *paths], check=True, capture_output=False, text=True)
+        result = self.git(["diff", "--cached", "--quiet"])
+        if result.returncode == 0:
+            print_info("No staged metadata changes to commit.")
+            return True
+        self.git(["commit", "-m", message], check=True, capture_output=False, text=True)
+        return True
+
+    def push_tag(self, tag: str) -> bool:
+        """Push a tag to origin."""
+        self.git(["push", "origin", tag], check=True, capture_output=False, text=True)
+        return True
 
     def list_releases(self, count: int = 5) -> bool:
         """

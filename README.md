@@ -131,7 +131,7 @@ group_id = "4678293"  # Default for article.template
 output_file = "references.bib"
 
 [git]
-auto_push = true
+auto_push = false
 default_branch = "main"
 
 [latex]
@@ -205,11 +205,17 @@ The `init` command sets up:
 # Refresh gitinfo2 version metadata
 article-cli version
 
-# Preview a new release tag
-article-cli release v1.2.3 --dry-run
+# Refresh metadata, compile, and check the PDF version text
+article-cli version --compile --check-pdf
 
-# Create a new release tag
-article-cli release v1.2.3
+# Preview a new release tag
+article-cli release v1 --dry-run
+
+# Create a checked local release tag
+article-cli release v1
+
+# Check bibliography freshness during release, then push the tag
+article-cli release v1 --bib check --push
 
 # List recent releases
 article-cli list --count 10
@@ -392,11 +398,14 @@ article-cli bib update --api-key YOUR_KEY --group-id YOUR_GROUP
 article-cli --config custom-config.toml bib update
 ```
 
-## Version Format
+## Release Tags
 
-Release versions must follow the semantic versioning format:
-- `vX.Y.Z` for stable releases (e.g., `v1.2.3`)
-- `vX.Y.Z-pre.N` for pre-releases (e.g., `v1.2.3-pre.1`)
+The default paper release policy accepts short and full version tags:
+- `vX` for paper milestones (e.g., `v1`)
+- `vX.Y` or `vX.Y.Z` for more detailed paper releases
+- `vX.Y.Z-rc.N`, `vX.Y.Z-beta.N`, or similar pre-release suffixes
+
+Use `[tool.article-cli.release] tag_policy = "semver"` when a repository must require strict `vX.Y.Z` semantic-version tags. The release command does not commit, force-retag, push, or create a GitHub release unless the corresponding explicit flag is passed.
 
 ## Requirements
 

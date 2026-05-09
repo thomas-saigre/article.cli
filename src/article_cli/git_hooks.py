@@ -26,7 +26,7 @@ GITINFO2_POST_COMMIT_HOOK = """#!/bin/sh
 # Get the first tag found in the history from the current HEAD
 FIRSTTAG=$(git describe --tags --always --dirty='-*' 2>/dev/null)
 # Get the first tag in history that looks like a Release
-RELTAG=$(git describe --tags --long --always --dirty='-*' --match 'v[0-9]*\\.[0-9]*\\.[0-9]*' 2>/dev/null)
+RELTAG=$(git describe --tags --long --always --dirty='-*' --match 'v[0-9]*' 2>/dev/null)
 GIT_HEAD_INFO=$(git rev-parse --git-path gitHeadInfo.gin)
 mkdir -p "$(dirname "$GIT_HEAD_INFO")"
 # Hoover up the metadata
@@ -228,7 +228,7 @@ def _render_gitinfo2_metadata(repo_path: Path) -> Optional[str]:
             "--long",
             "--always",
             "--match",
-            "v[0-9]*.[0-9]*.[0-9]*",
+            "v[0-9]*",
         ],
     )
     if firsttag is None or reltag is None:

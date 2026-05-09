@@ -37,6 +37,15 @@ deterministic = true
 auto_push = false
 default_branch = "main"
 
+[tool.article-cli.release]
+tag_policy = "paper"
+allow_dirty = false
+compile = true
+check_pdf = true
+checksum = true
+bibliography = "off"
+github_release = false
+
 [tool.article-cli.latex]
 clean_extensions = [
     ".aux", ".bbl", ".blg", ".log", ".out", ".pyg",

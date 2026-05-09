@@ -291,18 +291,27 @@ def test_version_dry_run_is_forwarded_to_git_manager():
     manager_cls.return_value.refresh_version_metadata.assert_called_once_with(True)
 
 
-def test_release_dry_run_is_forwarded_to_git_manager():
+def test_release_dry_run_is_forwarded_to_release_service(tmp_path):
     """release --dry-run should validate without creating a tag."""
     args = SimpleNamespace(version="v1.0.0", push=False, dry_run=True)
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text(
+        """
+[tool.article-cli.git]
+auto_push = true
+"""
+    )
 
-    with patch("article_cli.commands.release.GitManager") as manager_cls:
-        manager_cls.return_value.create_release.return_value = True
-        result = release_command.run_release(args, Config(quiet=True))
+    with patch("article_cli.commands.release.ReleaseService") as service_cls:
+        service_cls.return_value.release.return_value = True
+        result = release_command.run_release(args, Config(config_file, quiet=True))
 
     assert result == 0
-    manager_cls.return_value.create_release.assert_called_once_with(
-        "v1.0.0", auto_push=False, dry_run=True
-    )
+    service_cls.return_value.release.assert_called_once()
+    options = service_cls.return_value.release.call_args.args[0]
+    assert options.tag == "v1.0.0"
+    assert options.auto_push is False
+    assert options.dry_run is True
 
 
 def test_zotero_missing_requests_fails_at_command_time(monkeypatch):

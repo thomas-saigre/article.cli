@@ -162,6 +162,18 @@ class Config:
             "default_branch": self.get("git", "default_branch", "main"),
         }
 
+    def get_release_config(self) -> Dict[str, Any]:
+        """Get release workflow configuration."""
+        return {
+            "tag_policy": self.get("release", "tag_policy", "paper"),
+            "allow_dirty": self.get("release", "allow_dirty", False),
+            "compile": self.get("release", "compile", True),
+            "check_pdf": self.get("release", "check_pdf", True),
+            "checksum": self.get("release", "checksum", True),
+            "bibliography": self.get("release", "bibliography", "off"),
+            "github_release": self.get("release", "github_release", False),
+        }
+
     def get_latex_config(self) -> Dict[str, Any]:
         """Get LaTeX-specific configuration"""
         default_extensions = [
@@ -366,10 +378,22 @@ deterministic = true
 
 [git]
 # Automatically push after creating releases
-auto_push = true
+auto_push = false
 
 # Default branch name
 default_branch = "main"
+
+[release]
+# Tag policy: "paper" accepts v1, v1.0, v1.0.0 and prerelease suffixes.
+# Use "semver" for strict vX.Y.Z, or "loose" for any non-space tag.
+tag_policy = "paper"
+allow_dirty = false
+compile = true
+check_pdf = true
+checksum = true
+# bibliography policy: "off", "check", or "update"
+bibliography = "off"
+github_release = false
 
 [latex]
 # File extensions to clean

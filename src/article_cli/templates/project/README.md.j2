@@ -115,8 +115,14 @@ article-cli compile
 # Refresh gitinfo2 version metadata
 article-cli version
 
-# Create a release tag
-article-cli release v1.0.0
+# Refresh metadata, compile, and check the PDF version text
+article-cli version --compile --check-pdf
+
+# Preview a checked paper release
+article-cli release v1 --dry-run
+
+# Create a checked local release tag
+article-cli release v1
 
 # List releases
 article-cli list
@@ -134,7 +140,7 @@ article-cli config show
 2. Update bibliography if needed: `article-cli bib update`.
 3. Build locally: `article-cli compile`.
 4. Commit and push changes.
-5. Create a release tag for publication: `article-cli release v1.0.0 --push`.
+5. Create a release tag for publication: `article-cli release v1 --bib check --push`.
 
 ## License
 

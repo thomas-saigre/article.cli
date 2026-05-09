@@ -45,8 +45,9 @@ Examples:
   %(prog)s bib update                     # Update references from Zotero
   %(prog)s compile                        # Compile configured main document
   %(prog)s version                        # Refresh and report git metadata
-  %(prog)s release v1.0.0 --dry-run       # Preview release tag creation
-  %(prog)s release v1.0.0                 # Create release tag
+  %(prog)s version --compile --check-pdf  # Refresh, compile, and inspect PDF text
+  %(prog)s release v1 --dry-run           # Preview release tag creation
+  %(prog)s release v1                     # Create checked local release tag
 
   # Common utilities
   %(prog)s compile --engine pdflatex      # Override configured engine
@@ -54,9 +55,9 @@ Examples:
   %(prog)s compile presentation.typ       # Compile Typst document
   %(prog)s clean                          # Clean build files
   %(prog)s list --count 10                # List 10 recent release tags
-  %(prog)s delete v1.0.0                  # Delete release tag
+  %(prog)s delete v1                      # Delete release tag
   %(prog)s update-bibtex                  # Deprecated alias for bib update
-  %(prog)s create v1.0.0                  # Deprecated alias for release
+  %(prog)s create v1                      # Deprecated alias for release
   %(prog)s config create                  # Create sample config file
   %(prog)s install-fonts --list           # List installed fonts
   %(prog)s install-theme --list           # List available themes

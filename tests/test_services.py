@@ -2,6 +2,7 @@
 Tests for article-cli service boundaries.
 """
 
+from pathlib import Path
 from types import SimpleNamespace
 
 from article_cli.config import Config
@@ -50,7 +51,8 @@ class FakeGitManager:
 
     instances = []
 
-    def __init__(self):
+    def __init__(self, repo_root=None):
+        self.repo_root = Path(repo_root or ".").resolve()
         self.calls = []
         self.instances.append(self)
 
@@ -64,6 +66,22 @@ class FakeGitManager:
 
     def create_release(self, version, auto_push=False, dry_run=False):
         self.calls.append(("create_release", version, auto_push, dry_run))
+        return True
+
+    def tag_exists(self, tag):
+        self.calls.append(("tag_exists", tag))
+        return False
+
+    def dirty_files(self, ignore_gitinfo=True):
+        self.calls.append(("dirty_files", ignore_gitinfo))
+        return []
+
+    def create_tag(self, tag, force=False):
+        self.calls.append(("create_tag", tag, force))
+        return True
+
+    def push_tag(self, tag):
+        self.calls.append(("push_tag", tag))
         return True
 
     def list_releases(self, count=5):
@@ -218,7 +236,8 @@ def test_git_release_and_workflow_services_delegate_to_implementation():
 
     assert FakeGitManager.instances[0].calls == [("setup_hooks", True)]
     assert FakeGitManager.instances[1].calls == [
-        ("create_release", "v1.0.0", True, True),
+        ("tag_exists", "v1.0.0"),
+        ("dirty_files", True),
         ("list_releases", 3),
         ("delete_release", "v1.0.0", True),
     ]
