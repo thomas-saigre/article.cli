@@ -2,6 +2,8 @@
 Git hook templates and helpers for article-cli.
 """
 
+from __future__ import annotations
+
 import stat
 import shutil
 import subprocess

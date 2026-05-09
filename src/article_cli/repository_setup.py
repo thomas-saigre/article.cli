@@ -1060,17 +1060,17 @@ jobs:
           echo "## 🔧 Environment Configuration" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Python Environment:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
           echo "UV Version: $(uv --version)" >> $GITHUB_STEP_SUMMARY
           echo "Python Version: $(python --version)" >> $GITHUB_STEP_SUMMARY
           echo "Virtual Environment: $VIRTUAL_ENV" >> $GITHUB_STEP_SUMMARY
           echo "Article CLI: $(article-cli --version)" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Configuration Details:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
           article-cli config show >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Run article-cli doctor diagnostics
         continue-on-error: true
@@ -1092,13 +1092,13 @@ jobs:
           echo "- **Exit code**: $doctor_status" >> $GITHUB_STEP_SUMMARY
           echo "- **Errors**: $errors" >> $GITHUB_STEP_SUMMARY
           echo "- **Warnings**: $warnings" >> $GITHUB_STEP_SUMMARY
-          echo "- **JSON artifact**: \`article-cli-doctor.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **JSON artifact**: \\`article-cli-doctor.json\\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "<details><summary>Doctor JSON</summary>" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`json" >> $GITHUB_STEP_SUMMARY
           cat /tmp/article-cli-doctor.pretty.json >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
           echo "</details>" >> $GITHUB_STEP_SUMMARY
 
       - name: Update bibliography from Zotero
@@ -1178,14 +1178,14 @@ jobs:
             file_size=$(du -h "${{{{ needs.workflow-setup.outputs.pdf }}}}" | cut -f1)
             echo "✅ **PDF Generated Successfully**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **File**: \`${{{{ needs.workflow-setup.outputs.pdf }}}}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **File**: \\`${{{{ needs.workflow-setup.outputs.pdf }}}}\\`" >> $GITHUB_STEP_SUMMARY
             echo "- **Size**: $file_size" >> $GITHUB_STEP_SUMMARY
             echo "- **Runner**: ${{{{ needs.workflow-setup.outputs.runner }}}}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Source**: \`${{{{ needs.workflow-setup.outputs.tex }}}}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Source**: \\`${{{{ needs.workflow-setup.outputs.tex }}}}\\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **PDF Generation Failed**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Expected file: \`${{{{ needs.workflow-setup.outputs.pdf }}}}\`" >> $GITHUB_STEP_SUMMARY
+            echo "Expected file: \\`${{{{ needs.workflow-setup.outputs.pdf }}}}\\`" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload Artifact
@@ -1224,13 +1224,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 📦 Artifact Upload" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Artifact Name**: \`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact Name**: \\`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}\\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Included Files:" >> $GITHUB_STEP_SUMMARY
-          echo "- LaTeX source files (\*.tex, \*.sty, \*.cls)" >> $GITHUB_STEP_SUMMARY
-          echo "- Bibliography files (\*.bib)" >> $GITHUB_STEP_SUMMARY
-          echo "- Generated PDF: \`${{{{ needs.workflow-setup.outputs.pdf }}}}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Git info files (\*.gin)" >> $GITHUB_STEP_SUMMARY
+          echo "- LaTeX source files (*.tex, *.sty, *.cls)" >> $GITHUB_STEP_SUMMARY
+          echo "- Bibliography files (*.bib)" >> $GITHUB_STEP_SUMMARY
+          echo "- Generated PDF: \\`${{{{ needs.workflow-setup.outputs.pdf }}}}\\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Git info files (*.gin)" >> $GITHUB_STEP_SUMMARY
           echo "- Figures and data files" >> $GITHUB_STEP_SUMMARY
 
   check:
@@ -1280,12 +1280,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 🔍 Artifact Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Artifact**: \`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact**: \\`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}\\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Artifact Contents:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
           ls -la ${{{{ github.workspace }}}}/artifact/ >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "\\`\\`\\`" >> $GITHUB_STEP_SUMMARY
       -
         name: Check compilation of LaTeX document from artifact
         if: ${{{{ needs.workflow-setup.outputs.runner == 'ubuntu-latest' }}}}
@@ -1341,18 +1341,18 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 🚀 Release Preparation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Tag**: \`${{{{ github.ref_name }}}}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: \\`${{{{ github.ref_name }}}}\\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Release Assets:" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "artifact/${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.pdf" ]; then
             pdf_size=$(du -h "artifact/${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.pdf" | cut -f1)
-            echo "- 📄 **PDF**: \`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.pdf\` ($pdf_size)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📄 **PDF**: \\`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.pdf\\` ($pdf_size)" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ -f "${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.tar.gz" ]; then
             archive_size=$(du -h "${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.tar.gz" | cut -f1)
-            echo "- 📦 **Archive**: \`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.tar.gz\` ($archive_size)" >> $GITHUB_STEP_SUMMARY
+            echo "- 📦 **Archive**: \\`${{{{ needs.workflow-setup.outputs.prefixwithref }}}}.tar.gz\\` ($archive_size)" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Create Release
