@@ -65,10 +65,23 @@ class GitManager:
             git_path = self.repo_root / git_path
         return git_path.resolve()
 
-    def setup_hooks(self) -> bool:
+    def setup_hooks(self, dry_run: bool = False) -> bool:
         """Setup git hooks for gitinfo2"""
         try:
             git_hooks_dir = self._git_path("hooks")
+            post_commit_src = self.repo_root / "hooks" / "post-commit"
+
+            if dry_run:
+                print_info("Dry run: no setup files were changed.")
+                print_info(f"Would ensure repository hook source: {post_commit_src}")
+                print_info(f"Would ensure Git hooks directory: {git_hooks_dir}")
+                for hook_name in ["post-commit", "post-checkout", "post-merge"]:
+                    print_info(f"Would install or update managed hook: {hook_name}")
+                print_info(
+                    "Would refresh gitHeadLocal.gin if git metadata is available."
+                )
+                return True
+
             git_hooks_dir.mkdir(parents=True, exist_ok=True)
             post_commit_src = ensure_gitinfo2_hook_source(self.repo_root)
 
@@ -110,13 +123,55 @@ class GitManager:
             print_error(f"Failed to setup hooks: {e}")
             return False
 
-    def create_release(self, version: str, auto_push: bool = False) -> bool:
+    def refresh_version_metadata(self, dry_run: bool = False) -> bool:
+        """
+        Refresh and report gitinfo2 version metadata without creating tags.
+
+        Args:
+            dry_run: Report planned actions without writing gitHeadLocal.gin
+
+        Returns:
+            True if the current git state could be reported, False otherwise
+        """
+        commit = self._git_output(["rev-parse", "--short", "HEAD"]) or "unknown"
+        describe = self._git_output(
+            ["describe", "--tags", "--long", "--always", "--dirty=-*"]
+        )
+        branch = self._git_output(["branch", "--show-current"]) or "detached"
+
+        print_info(f"Git branch: {branch}")
+        print_info(f"Git commit: {commit}")
+        if describe:
+            print_info(f"Git describe: {describe}")
+
+        if dry_run:
+            print_info("Dry run: no version metadata files were changed.")
+            print_info("Would refresh gitHeadLocal.gin from gitinfo2 metadata.")
+            return True
+
+        if refresh_gitinfo2_metadata(self.repo_root):
+            print_success("Refreshed gitHeadLocal.gin")
+            summary = gitinfo2_metadata_summary(self.repo_root)
+            if summary:
+                print_info(f"Version metadata: {summary}")
+        else:
+            print_warning(
+                "Could not refresh gitHeadLocal.gin. Run article-cli setup after "
+                "the first commit if gitinfo2 hooks are missing."
+            )
+
+        return True
+
+    def create_release(
+        self, version: str, auto_push: bool = False, dry_run: bool = False
+    ) -> bool:
         """
         Create a new release with the given version
 
         Args:
             version: Version string (e.g., 'v1.0.0')
             auto_push: Whether to automatically push the release
+            dry_run: Validate and report actions without creating a release
 
         Returns:
             True if successful, False otherwise
@@ -135,6 +190,16 @@ class GitManager:
             if result.returncode == 0:
                 print_error(f"Tag {version} already exists")
                 return False
+
+            if dry_run:
+                print_info("Dry run: no tags, commits, or metadata files were changed.")
+                print_info(f"Would create annotated tag: {version}")
+                print_info("Would refresh gitHeadLocal.gin after tagging.")
+                if auto_push:
+                    print_info("Would push with: git push origin --follow-tags")
+                else:
+                    print_info("Would leave push to the user.")
+                return True
 
             # Create tag
             subprocess.run(
@@ -204,6 +269,22 @@ class GitManager:
         except Exception as e:
             print_error(f"Failed to create release: {e}")
             return False
+
+    def _git_output(self, args: List[str]) -> Optional[str]:
+        """Run git and return stdout without the trailing newline."""
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                cwd=self.repo_root,
+            )
+        except (FileNotFoundError, OSError):
+            return None
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip()
 
     def list_releases(self, count: int = 5) -> bool:
         """

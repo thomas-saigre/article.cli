@@ -13,6 +13,9 @@ from article_cli.cli import (
     handle_compile_command,
     handle_update_bibtex_command,
 )
+from article_cli.commands import release as release_command
+from article_cli.commands import setup as setup_command
+from article_cli.commands import version as version_command
 from article_cli.config import Config
 from article_cli.zotero import ZoteroBibTexUpdater
 
@@ -177,20 +180,98 @@ output_file = "zotero/references.bib"
     assert updater_cls.call_args.kwargs["output_file"] == "manual.bib"
 
 
+def test_bib_update_dry_run_does_not_contact_zotero(tmp_path, monkeypatch):
+    """bib update --dry-run should validate config without writing references."""
+    clear_zotero_env(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").write_text(
+        """
+[tool.article-cli.zotero]
+api_key = "test-key"
+group_id = "4709047"
+output_file = "references.bib"
+"""
+    )
+    args = SimpleNamespace(
+        api_key=None,
+        user_id=None,
+        group_id=None,
+        output=None,
+        no_backup=False,
+        dry_run=True,
+    )
+    config = Config(quiet=True)
+
+    with patch("article_cli.commands.bibtex.ZoteroBibTexUpdater") as updater_cls:
+        result = handle_update_bibtex_command(args, config)
+
+    assert result == 0
+    updater_cls.assert_not_called()
+    assert not (tmp_path / "references.bib").exists()
+
+
 def test_parser_config_backed_defaults_are_none():
     """Parser defaults must leave project config visible to command handlers."""
     parser = create_parser()
 
     compile_args = parser.parse_args(["compile"])
     bib_args = parser.parse_args(["update-bibtex"])
+    canonical_bib_args = parser.parse_args(["bib", "update"])
     doctor_args = parser.parse_args(["doctor"])
+    setup_args = parser.parse_args(["setup", "--dry-run"])
+    version_args = parser.parse_args(["version", "--dry-run"])
+    release_args = parser.parse_args(["release", "v1.0.0", "--dry-run"])
+    create_args = parser.parse_args(["create", "v1.0.0", "--dry-run"])
 
     assert compile_args.engine is None
     assert compile_args.shell_escape is None
     assert compile_args.output_dir is None
     assert bib_args.output is None
+    assert canonical_bib_args.output is None
     assert doctor_args.engine is None
     assert doctor_args.output_dir is None
+    assert setup_args.dry_run is True
+    assert version_args.dry_run is True
+    assert release_args.dry_run is True
+    assert create_args.dry_run is True
+
+
+def test_setup_dry_run_is_forwarded_to_git_manager():
+    """setup --dry-run should call the setup service in dry-run mode."""
+    args = SimpleNamespace(dry_run=True)
+
+    with patch("article_cli.commands.setup.GitManager") as manager_cls:
+        manager_cls.return_value.setup_hooks.return_value = True
+        result = setup_command.run(args, Config(quiet=True))
+
+    assert result == 0
+    manager_cls.return_value.setup_hooks.assert_called_once_with(dry_run=True)
+
+
+def test_version_dry_run_is_forwarded_to_git_manager():
+    """version --dry-run should not refresh files."""
+    args = SimpleNamespace(dry_run=True)
+
+    with patch("article_cli.commands.version.GitManager") as manager_cls:
+        manager_cls.return_value.refresh_version_metadata.return_value = True
+        result = version_command.run(args, Config(quiet=True))
+
+    assert result == 0
+    manager_cls.return_value.refresh_version_metadata.assert_called_once_with(True)
+
+
+def test_release_dry_run_is_forwarded_to_git_manager():
+    """release --dry-run should validate without creating a tag."""
+    args = SimpleNamespace(version="v1.0.0", push=False, dry_run=True)
+
+    with patch("article_cli.commands.release.GitManager") as manager_cls:
+        manager_cls.return_value.create_release.return_value = True
+        result = release_command.run_release(args, Config(quiet=True))
+
+    assert result == 0
+    manager_cls.return_value.create_release.assert_called_once_with(
+        "v1.0.0", auto_push=False, dry_run=True
+    )
 
 
 def test_zotero_missing_requests_fails_at_command_time(monkeypatch):

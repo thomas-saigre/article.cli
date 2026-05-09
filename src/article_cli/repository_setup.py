@@ -153,7 +153,7 @@ class RepositorySetup:
             print_info("  1. Review and edit pyproject.toml")
             print_info("  2. Add ZOTERO_API_KEY secret to GitHub repository")
             print_info("  3. Run: article-cli setup")
-            print_info("  4. Run: article-cli update-bibtex")
+            print_info("  4. Run: article-cli bib update")
             print_info("  5. Commit and push changes")
 
             return True
@@ -910,7 +910,7 @@ Branch: \\gitBranch
 
 # This workflow uses article-cli for:
 # - Git hooks setup (article-cli setup)
-# - Bibliography updates from Zotero (article-cli update-bibtex)
+# - Bibliography updates from Zotero (article-cli bib update)
 # - LaTeX build file cleanup (article-cli clean)
 #
 # Project type: {project_type}
@@ -1108,7 +1108,7 @@ jobs:
           echo "Updating bibliography from Zotero group using isolated virtual environment..." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if article-cli update-bibtex; then
+          if article-cli bib update; then
             echo "✅ **Bibliography Updated Successfully**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "- **Environment**: Isolated venv with uv" >> $GITHUB_STEP_SUMMARY
@@ -1609,7 +1609,7 @@ This repository contains the LaTeX source for the {doc_type} "{title}".
 
 4. **Update bibliography**:
    ```bash
-   article-cli update-bibtex
+   article-cli bib update
    ```
 
 ## Building the Document
@@ -1656,19 +1656,29 @@ This repository uses GitHub Actions for automated PDF compilation:
 
 ```bash
 # Setup repository
+article-cli setup --dry-run
 article-cli setup
 
+# Diagnose repository readiness
+article-cli doctor
+
 # Update bibliography from Zotero
-article-cli update-bibtex
+article-cli bib update
 
-# Clean LaTeX build files
-article-cli clean
+# Build the configured document
+article-cli compile
 
-# Create a release
-article-cli create v1.0.0
+# Refresh gitinfo2 version metadata
+article-cli version
+
+# Create a release tag
+article-cli release v1.0.0
 
 # List releases
 article-cli list
+
+# Clean LaTeX build files
+article-cli clean
 
 # Show configuration
 article-cli config show
@@ -1677,10 +1687,10 @@ article-cli config show
 ## Development Workflow
 
 1. Make changes to LaTeX source files
-2. Update bibliography if needed: `article-cli update-bibtex`
-3. Build locally: `latexmk -pdf {tex_file}`
+2. Update bibliography if needed: `article-cli bib update`
+3. Build locally: `article-cli compile`
 4. Commit and push changes
-5. Create a release tag for publication: `article-cli create v1.0.0 --push`
+5. Create a release tag for publication: `article-cli release v1.0.0 --push`
 
 ## License
 

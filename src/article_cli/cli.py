@@ -35,29 +35,33 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Paper lifecycle
   %(prog)s init --title "My Article" --authors "John Doe,Jane Smith"
-  %(prog)s setup                          # Setup git hooks
-  %(prog)s clean                          # Clean build files
-  %(prog)s compile main.tex               # Compile with latexmk
-  %(prog)s compile --engine pdflatex      # Compile with pdflatex
-  %(prog)s compile --shell-escape         # Enable shell escape
+  %(prog)s setup --dry-run                # Preview setup actions
+  %(prog)s setup                          # Install managed gitinfo2 hooks
+  %(prog)s doctor                         # Diagnose repository readiness
+  %(prog)s bib update --dry-run           # Preview Zotero bibliography update
+  %(prog)s bib update                     # Update references from Zotero
+  %(prog)s compile                        # Compile configured main document
+  %(prog)s version                        # Refresh and report git metadata
+  %(prog)s release v1.0.0 --dry-run       # Preview release tag creation
+  %(prog)s release v1.0.0                 # Create release tag
+
+  # Common utilities
+  %(prog)s compile --engine pdflatex      # Override configured engine
   %(prog)s compile --watch                # Watch and auto-recompile
   %(prog)s compile presentation.typ       # Compile Typst document
-  %(prog)s compile --engine typst --watch # Watch Typst file
-  %(prog)s compile --font-path fonts/     # Typst with custom fonts
-  %(prog)s create v1.0.0                  # Create release v1.0.0
-  %(prog)s list --count 10                # List 10 recent releases
-  %(prog)s delete v1.0.0                  # Delete release
-  %(prog)s update-bibtex                  # Update from Zotero
-  %(prog)s doctor                         # Diagnose repository readiness
+  %(prog)s clean                          # Clean build files
+  %(prog)s list --count 10                # List 10 recent release tags
+  %(prog)s delete v1.0.0                  # Delete release tag
+  %(prog)s update-bibtex                  # Deprecated alias for bib update
+  %(prog)s create v1.0.0                  # Deprecated alias for release
   %(prog)s config create                  # Create sample config file
-  %(prog)s install-fonts                  # Install fonts for XeLaTeX
   %(prog)s install-fonts --list           # List installed fonts
-  %(prog)s install-theme numpex           # Install numpex Beamer/Typst theme
   %(prog)s install-theme --list           # List available themes
 
 Environment variables:
-  ZOTERO_API_KEY    : Your Zotero API key (required for update-bibtex)
+  ZOTERO_API_KEY    : Your Zotero API key (required for bib update)
   ZOTERO_USER_ID    : Your Zotero user ID
   ZOTERO_GROUP_ID   : Your Zotero group ID
         """,

@@ -16,6 +16,7 @@ A command-line tool for managing LaTeX and Typst documents with git integration 
 - **GitHub Actions Workflows**: Automated PDF compilation with XeLaTeX support, artifact upload, and GitHub releases
 - **Git Release Management**: Create, list, and delete releases with gitinfo2 support
 - **Zotero Integration**: Synchronize bibliography from Zotero with robust pagination and error handling
+- **Lifecycle Commands**: Use `init`, `setup`, `doctor`, `bib update`, `compile`, `version`, and `release`
 - **LaTeX Build Management**: Clean build files and manage LaTeX compilation artifacts
 - **Git Hooks Setup**: Automated setup of git hooks for gitinfo2 integration
 - **Repository Diagnostics**: Read-only `doctor` checks for git, hooks, build tools, Zotero, workflows, and release readiness
@@ -75,8 +76,10 @@ uv build
 3. **Setup git hooks and update bibliography**:
    ```bash
    article-cli doctor
+   article-cli setup --dry-run
    article-cli setup
-   article-cli update-bibtex
+   article-cli bib update --dry-run
+   article-cli bib update
    ```
 
 4. **Commit and push** to trigger automated PDF compilation!
@@ -97,12 +100,15 @@ uv build
 
 3. **Update bibliography from Zotero**:
    ```bash
-   article-cli update-bibtex
+   article-cli bib update
    ```
 
-4. **Create a release**:
+4. **Compile, refresh version metadata, and create a release**:
    ```bash
-   article-cli create v1.0.0
+   article-cli compile
+   article-cli version
+   article-cli release v1.0.0 --dry-run
+   article-cli release v1.0.0
    ```
 
 ## Configuration
@@ -196,27 +202,42 @@ The `init` command sets up:
 ### Git Release Management
 
 ```bash
-# Create a new release
-article-cli create v1.2.3
+# Refresh gitinfo2 version metadata
+article-cli version
+
+# Preview a new release tag
+article-cli release v1.2.3 --dry-run
+
+# Create a new release tag
+article-cli release v1.2.3
 
 # List recent releases
 article-cli list --count 10
 
 # Delete a release
 article-cli delete v1.2.3
+
+# Deprecated alias retained for compatibility
+article-cli create v1.2.3
 ```
 
 ### Bibliography Management
 
 ```bash
+# Preview bibliography update
+article-cli bib update --dry-run
+
 # Update bibliography from Zotero
-article-cli update-bibtex
+article-cli bib update
 
 # Specify custom output file
-article-cli update-bibtex --output my-refs.bib
+article-cli bib update --output my-refs.bib
 
 # Skip backup creation
-article-cli update-bibtex --no-backup
+article-cli bib update --no-backup
+
+# Deprecated alias retained for compatibility
+article-cli update-bibtex
 ```
 
 ### LaTeX Compilation
@@ -365,10 +386,10 @@ article-cli clean
 
 ```bash
 # Override configuration via command line
-article-cli update-bibtex --api-key YOUR_KEY --group-id YOUR_GROUP
+article-cli bib update --api-key YOUR_KEY --group-id YOUR_GROUP
 
 # Specify custom configuration file
-article-cli --config custom-config.toml update-bibtex
+article-cli --config custom-config.toml bib update
 ```
 
 ## Version Format

@@ -13,6 +13,7 @@ from . import (
     release,
     setup,
     themes,
+    version,
 )
 
 COMMAND_MODULES = [
@@ -21,6 +22,7 @@ COMMAND_MODULES = [
     clean,
     compile,
     doctor,
+    version,
     release,
     bibtex,
     config,

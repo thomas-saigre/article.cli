@@ -436,7 +436,7 @@ class DoctorService:
                 "output-file",
                 "warning",
                 f"Bibliography file does not exist: {output_file}.",
-                next_command="article-cli update-bibtex",
+                next_command="article-cli bib update",
             )
 
         if zotero_config.get("api_key"):
