@@ -78,7 +78,13 @@ This repository uses GitHub Actions for automated PDF compilation:
 
 - On push to `main`: compiles and uploads a PDF artifact.
 - On pull request: compiles and verifies the document.
+[% if ci_release_policy == "github" %]
 - On tag push (`v*`): creates a GitHub release with the PDF.
+[% else %]
+- On tag push (`v*`): builds and uploads artifacts; GitHub release creation is disabled.
+[% endif %]
+- Runner policy: `[[ ci_runner_policy ]]`.
+- Bibliography policy: `[[ ci_bibliography ]]`.
 
 ## Project Structure
 

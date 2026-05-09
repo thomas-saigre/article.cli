@@ -134,6 +134,15 @@ output_file = "references.bib"
 auto_push = false
 default_branch = "main"
 
+[workflow]
+runner_policy = "github"
+github_runner = "ubuntu-24.04"
+self_hosted_label = "self-texlive"
+self_hosted_org = ""
+bibliography = "off"
+release = "github"
+artifact_includes = []
+
 [latex]
 clean_extensions = [".aux", ".bbl", ".blg", ".log", ".out", ".synctex.gz"]
 
@@ -189,6 +198,13 @@ article-cli init --title "My Article" --authors "Author" --tex-file article.tex
 
 # Force overwrite existing files
 article-cli init --title "My Article" --authors "Author" --force
+
+# Generate CI that checks Zotero bibliography freshness
+article-cli init --title "My Article" --authors "Author" --ci-bib check
+
+# Generate CI with opt-in self-hosted runner discovery
+article-cli init --title "My Article" --authors "Author" \
+  --ci-runner-policy self-hosted-auto --ci-self-hosted-org my-org
 ```
 
 The `init` command sets up:

@@ -34,6 +34,13 @@ class WorkflowService:
         output_dir: str = "",
         fonts_dir: str = "",
         install_fonts: bool = False,
+        ci_bibliography: str = "off",
+        ci_runner_policy: str = "github",
+        ci_github_runner: str = "ubuntu-24.04",
+        ci_self_hosted_label: str = "self-texlive",
+        ci_self_hosted_org: str = "",
+        ci_release_policy: str = "github",
+        ci_artifact_includes: Optional[List[str]] = None,
     ) -> bool:
         """Initialize a new article repository."""
         return self.setup.init_repository(
@@ -51,4 +58,11 @@ class WorkflowService:
             output_dir=output_dir,
             fonts_dir=fonts_dir,
             install_fonts=install_fonts,
+            ci_bibliography=ci_bibliography,
+            ci_runner_policy=ci_runner_policy,
+            ci_github_runner=ci_github_runner,
+            ci_self_hosted_label=ci_self_hosted_label,
+            ci_self_hosted_org=ci_self_hosted_org,
+            ci_release_policy=ci_release_policy,
+            ci_artifact_includes=ci_artifact_includes,
         )

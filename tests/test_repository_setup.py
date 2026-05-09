@@ -844,11 +844,13 @@ class TestFullRepositoryInit:
             pyproject = tomllib.loads((root / "pyproject.toml").read_text())
             workflow = (root / ".github" / "workflows" / "latex.yml").read_text()
 
-            assert pyproject["tool"]["article-cli"]["workflow"] == {
-                "output_dir": "build",
-                "fonts_dir": "fonts",
-                "install_fonts": True,
-            }
+            workflow_config = pyproject["tool"]["article-cli"]["workflow"]
+            assert workflow_config["output_dir"] == "build"
+            assert workflow_config["fonts_dir"] == "fonts"
+            assert workflow_config["install_fonts"] is True
+            assert workflow_config["runner_policy"] == "github"
+            assert workflow_config["bibliography"] == "off"
+            assert workflow_config["release"] == "github"
             assert "Install custom fonts" in workflow
             assert "poster.tex" in workflow
             assert "poster.pdf" in workflow

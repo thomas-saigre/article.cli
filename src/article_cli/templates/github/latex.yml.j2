@@ -5,6 +5,9 @@ name: Compile Document and Release PDF
 # Engine: [[ latex_engine_label ]]
 # Output directory: [[ output_dir_label ]]
 # Additional documents: [[ additional_documents_label ]]
+# Runner policy: [[ runner_policy ]]
+# Bibliography policy: [[ bibliography_policy ]]
+# Release policy: [[ release_policy ]]
 
 on:
   push:
@@ -19,7 +22,7 @@ on:
 jobs:
   workflow-setup:
     name: Workflow Setup
-    runs-on: ubuntu-24.04
+    runs-on: [[ github_runner ]]
     outputs:
       runner: ${{ steps.texlive_runner.outputs.runner }}
       prefix: ${{ steps.doc_prefix.outputs.prefix }}
@@ -27,27 +30,31 @@ jobs:
       pdf: ${{ steps.doc_prefix.outputs.pdf }}
       tex: ${{ steps.doc_prefix.outputs.tex }}
     steps:
-      - name: Get TeXLive Runner
+      - name: Resolve CI runner
         id: texlive_runner
         run: |
-[% if is_typst %]
-          echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
-[% else %]
-          if [ -n "${GH_TOKEN:-}" ]; then
-            runners=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /orgs/feelpp/actions/runners)
-            texlive=$(echo "$runners" | jq --arg label "self-texlive" '[.runners[] | any(.labels[]; .name == $label) and .status == "online"] | any')
+[% if runner_policy == "self-hosted-auto" and not is_typst %]
+          if [ -n "${GH_TOKEN:-}" ] && [ -n "[[ self_hosted_org ]]" ]; then
+            runners=$(gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /orgs/[[ self_hosted_org ]]/actions/runners)
+            texlive=$(echo "$runners" | jq --arg label "[[ self_hosted_label ]]" '[.runners[] | any(.labels[]; .name == $label) and .status == "online"] | any')
             if [ "$texlive" = "true" ]; then
-              echo "runner=self-texlive" >> "$GITHUB_OUTPUT"
+              echo "runner=[[ self_hosted_label ]]" >> "$GITHUB_OUTPUT"
             else
-              echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+              echo "runner=[[ github_runner ]]" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+            echo "runner=[[ github_runner ]]" >> "$GITHUB_OUTPUT"
           fi
+[% elif runner_policy == "self-hosted" and not is_typst %]
+          echo "runner=[[ self_hosted_label ]]" >> "$GITHUB_OUTPUT"
+[% else %]
+          echo "runner=[[ github_runner ]]" >> "$GITHUB_OUTPUT"
 [% endif %]
+[% if runner_policy == "self-hosted-auto" and not is_typst %]
         env:
           GH_TOKEN: ${{ secrets.TOKEN_RUNNER }}
 
+[% endif %]
       - name: Get Document Prefix
         id: doc_prefix
         run: |
@@ -125,6 +132,26 @@ jobs:
           python -m json.tool article-cli-doctor.json
           echo "doctor_status=$doctor_status" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Upload Doctor Diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: article-cli-doctor-${{ needs.workflow-setup.outputs.prefixwithref }}
+          path: article-cli-doctor.json
+          if-no-files-found: ignore
+
+[% if bibliography_policy == "check" %]
+      - name: Check bibliography from Zotero
+        env:
+          ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+        run: |
+          if [ -n "${ZOTERO_API_KEY:-}" ]; then
+            article-cli bib update --check
+          else
+            echo "ZOTERO_API_KEY is not set; skipping optional bibliography check."
+          fi
+
+[% elif bibliography_policy == "update" %]
       - name: Update bibliography from Zotero
         env:
           ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
@@ -135,6 +162,18 @@ jobs:
             echo "ZOTERO_API_KEY is not set; using the checked-in bibliography."
           fi
 
+[% elif bibliography_policy == "required" %]
+      - name: Update required bibliography from Zotero
+        env:
+          ZOTERO_API_KEY: ${{ secrets.ZOTERO_API_KEY }}
+        run: |
+          if [ -z "${ZOTERO_API_KEY:-}" ]; then
+            echo "ZOTERO_API_KEY is required by the generated CI bibliography policy."
+            exit 1
+          fi
+          article-cli bib update
+
+[% endif %]
 [% if install_fonts and fonts_dir %]
       - name: Install custom fonts
         run: |
@@ -161,9 +200,10 @@ jobs:
         run: article-cli compile "${{ needs.workflow-setup.outputs.tex }}"
 
 [% else %]
+[% if runner_policy != "self-hosted" %]
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
-        if: ${{ needs.workflow-setup.outputs.runner == 'ubuntu-latest' }}
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ github_runner ]]' }}
         with:
           root_file: ${{ needs.workflow-setup.outputs.tex }}
           latexmk_shell_escape: true
@@ -173,16 +213,20 @@ jobs:
 [% endif %]
           post_compile: "article-cli clean"
 
+[% endif %]
+[% if runner_policy != "github" %]
       - name: Compile LaTeX document
-        if: ${{ needs.workflow-setup.outputs.runner == 'self-texlive' }}
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ self_hosted_label ]]' }}
         run: |
           latexmk -shell-escape [[ latexmk_args ]] [[ outdir_arg ]] -file-line-error -interaction=nonstopmode "${{ needs.workflow-setup.outputs.tex }}"
           article-cli clean
 
+[% endif %]
 [% for doc in additional_documents %]
+[% if runner_policy != "self-hosted" %]
       - name: Compile additional document ([[ doc.name ]])
         uses: xu-cheng/latex-action@v3
-        if: ${{ needs.workflow-setup.outputs.runner == 'ubuntu-latest' }}
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ github_runner ]]' }}
         with:
           root_file: [[ doc.name ]]
           latexmk_shell_escape: true
@@ -191,11 +235,14 @@ jobs:
           args: "[[ outdir_arg ]]"
 [% endif %]
 
+[% endif %]
+[% if runner_policy != "github" %]
       - name: Compile additional document ([[ doc.name ]])
-        if: ${{ needs.workflow-setup.outputs.runner == 'self-texlive' }}
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ self_hosted_label ]]' }}
         run: |
           latexmk -shell-escape [[ latexmk_args ]] [[ outdir_arg ]] -file-line-error -interaction=nonstopmode "[[ doc.name ]]"
 
+[% endif %]
       - name: Stage additional PDF ([[ doc.pdf ]])
         run: cp "[[ pdf_location ]][[ doc.base ]].pdf" "[[ doc.pdf ]]"
 
@@ -228,6 +275,9 @@ jobs:
 [% for doc in additional_documents %]
             ./[[ doc.pdf ]]
 [% endfor %]
+[% for path in artifact_includes %]
+            [[ path ]]
+[% endfor %]
             ./README.md
             ./fig-*
             ./data/*
@@ -241,6 +291,7 @@ jobs:
             !./.DS_Store*
             !./.gitignore*
 
+[% if release_policy == "github" %]
   check:
     needs: [build_document, workflow-setup]
     runs-on: ${{ needs.workflow-setup.outputs.runner }}
@@ -261,8 +312,9 @@ jobs:
         working-directory: ${{ github.workspace }}/artifact
 
 [% else %]
+[% if runner_policy != "self-hosted" %]
       - name: Check compilation of LaTeX document from artifact
-        if: ${{ needs.workflow-setup.outputs.runner == 'ubuntu-latest' }}
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ github_runner ]]' }}
         uses: xu-cheng/latex-action@v3
         with:
           root_file: ${{ needs.workflow-setup.outputs.tex }}
@@ -270,10 +322,13 @@ jobs:
           latexmk_use_xelatex: [[ latexmk_use_xelatex ]]
           working_directory: ${{ github.workspace }}/artifact
 
+[% endif %]
+[% if runner_policy != "github" %]
       - name: Check compilation of LaTeX document from artifact
-        if: ${{ needs.workflow-setup.outputs.runner == 'self-texlive' }}
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ self_hosted_label ]]' }}
         run: latexmk -shell-escape [[ latexmk_args ]] -file-line-error -interaction=nonstopmode "${{ needs.workflow-setup.outputs.tex }}"
         working-directory: ${{ github.workspace }}/artifact
+[% endif %]
 [% endif %]
 
   release:
@@ -310,3 +365,43 @@ jobs:
             artifact/[[ doc.pdf ]]
 [% endfor %]
             ${{ needs.workflow-setup.outputs.prefixwithref }}.tar.gz
+[% else %]
+  check:
+    needs: [build_document, workflow-setup]
+    runs-on: ${{ needs.workflow-setup.outputs.runner }}
+    name: Check Document Artifact
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.workflow-setup.outputs.prefixwithref }}
+          path: ${{ github.workspace }}/artifact
+
+[% if is_typst %]
+      - name: Set up Typst
+        uses: typst-community/setup-typst@v4
+
+      - name: Check compilation of Typst document from artifact
+        run: typst compile "${{ needs.workflow-setup.outputs.tex }}"
+        working-directory: ${{ github.workspace }}/artifact
+
+[% else %]
+[% if runner_policy != "self-hosted" %]
+      - name: Check compilation of LaTeX document from artifact
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ github_runner ]]' }}
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: ${{ needs.workflow-setup.outputs.tex }}
+          latexmk_shell_escape: true
+          latexmk_use_xelatex: [[ latexmk_use_xelatex ]]
+          working_directory: ${{ github.workspace }}/artifact
+
+[% endif %]
+[% if runner_policy != "github" %]
+      - name: Check compilation of LaTeX document from artifact
+        if: ${{ needs.workflow-setup.outputs.runner == '[[ self_hosted_label ]]' }}
+        run: latexmk -shell-escape [[ latexmk_args ]] -file-line-error -interaction=nonstopmode "${{ needs.workflow-setup.outputs.tex }}"
+        working-directory: ${{ github.workspace }}/artifact
+[% endif %]
+[% endif %]
+[% endif %]

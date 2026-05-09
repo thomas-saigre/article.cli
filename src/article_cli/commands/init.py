@@ -80,6 +80,45 @@ def add_parser(subparsers: Any) -> None:
             "Overrides --style for the generated source file."
         ),
     )
+    parser.add_argument(
+        "--ci-bib",
+        choices=["off", "check", "update", "required"],
+        default="off",
+        help="Generated CI bibliography policy (default: off).",
+    )
+    parser.add_argument(
+        "--ci-runner-policy",
+        choices=["github", "self-hosted", "self-hosted-auto"],
+        default="github",
+        help="Generated CI runner policy (default: github).",
+    )
+    parser.add_argument(
+        "--ci-github-runner",
+        default="ubuntu-24.04",
+        help="GitHub-hosted runner for generated CI (default: ubuntu-24.04).",
+    )
+    parser.add_argument(
+        "--ci-self-hosted-label",
+        default="self-texlive",
+        help="Self-hosted runner label when generated CI opts into it.",
+    )
+    parser.add_argument(
+        "--ci-self-hosted-org",
+        default="",
+        help="GitHub organization used for opt-in self-hosted runner discovery.",
+    )
+    parser.add_argument(
+        "--ci-release",
+        choices=["github", "off"],
+        default="github",
+        help="Generated CI release policy (default: github).",
+    )
+    parser.add_argument(
+        "--ci-artifact",
+        action="append",
+        default=[],
+        help="Extra artifact path/glob to include in generated CI artifacts.",
+    )
     parser.set_defaults(handler=run)
 
 
@@ -102,6 +141,13 @@ def run(args: argparse.Namespace, config: Config) -> int:
                 aspect_ratio=args.aspect_ratio,
                 style=args.style,
                 template=args.template,
+                ci_bibliography=args.ci_bib,
+                ci_runner_policy=args.ci_runner_policy,
+                ci_github_runner=args.ci_github_runner,
+                ci_self_hosted_label=args.ci_self_hosted_label,
+                ci_self_hosted_org=args.ci_self_hosted_org,
+                ci_release_policy=args.ci_release,
+                ci_artifact_includes=args.ci_artifact,
             )
             else 1
         )

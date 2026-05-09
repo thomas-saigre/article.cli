@@ -72,6 +72,13 @@ class RepositorySetup:
         install_fonts: bool = False,
         style: str = "default",
         template: str = "",
+        ci_bibliography: str = "off",
+        ci_runner_policy: str = "github",
+        ci_github_runner: str = "ubuntu-24.04",
+        ci_self_hosted_label: str = "self-texlive",
+        ci_self_hosted_org: str = "",
+        ci_release_policy: str = "github",
+        ci_artifact_includes: Optional[List[str]] = None,
     ) -> bool:
         """
         Initialize a complete LaTeX repository (article, presentation, or poster)
@@ -101,10 +108,18 @@ class RepositorySetup:
             install_fonts: Whether to install custom fonts in CI
             style: Built-in document style for generated article templates
             template: Local Jinja2 template path for custom article styles
+            ci_bibliography: CI bibliography policy (off, check, update, required)
+            ci_runner_policy: CI runner policy (github, self-hosted, self-hosted-auto)
+            ci_github_runner: GitHub-hosted runner label
+            ci_self_hosted_label: Self-hosted runner label
+            ci_self_hosted_org: Organization for opt-in self-hosted runner discovery
+            ci_release_policy: CI release policy (github or off)
+            ci_artifact_includes: Extra artifact path globs
 
         Returns:
             True if successful, False otherwise
         """
+        ci_artifact_includes = ci_artifact_includes or []
         print_info(f"Initializing {project_type} repository at: {self.repo_path}")
 
         # Detect or validate main .tex file, create if missing
@@ -148,14 +163,21 @@ class RepositorySetup:
 
             # Create GitHub Actions workflows
             if not self._create_workflow(
-                project_name,
-                tex_file,
-                force,
-                project_type,
-                additional_documents,
-                output_dir,
-                fonts_dir,
-                install_fonts,
+                project_name=project_name,
+                tex_file=tex_file,
+                force=force,
+                project_type=project_type,
+                additional_documents=additional_documents,
+                output_dir=output_dir,
+                fonts_dir=fonts_dir,
+                install_fonts=install_fonts,
+                ci_bibliography=ci_bibliography,
+                ci_runner_policy=ci_runner_policy,
+                ci_github_runner=ci_github_runner,
+                ci_self_hosted_label=ci_self_hosted_label,
+                ci_self_hosted_org=ci_self_hosted_org,
+                ci_release_policy=ci_release_policy,
+                ci_artifact_includes=ci_artifact_includes,
             ):
                 return False
 
@@ -176,12 +198,28 @@ class RepositorySetup:
                 style,
                 template,
                 tex_file,
+                ci_bibliography,
+                ci_runner_policy,
+                ci_github_runner,
+                ci_self_hosted_label,
+                ci_self_hosted_org,
+                ci_release_policy,
+                ci_artifact_includes,
             ):
                 return False
 
             # Create README
             if not self._create_readme(
-                project_name, title, authors, tex_file, force, project_type, style
+                project_name,
+                title,
+                authors,
+                tex_file,
+                force,
+                project_type,
+                style,
+                ci_bibliography,
+                ci_runner_policy,
+                ci_release_policy,
             ):
                 return False
 
@@ -577,6 +615,13 @@ class RepositorySetup:
         style: str = "default",
         template: str = "",
         main_document: str = "",
+        ci_bibliography: str = "off",
+        ci_runner_policy: str = "github",
+        ci_github_runner: str = "ubuntu-24.04",
+        ci_self_hosted_label: str = "self-texlive",
+        ci_self_hosted_org: str = "",
+        ci_release_policy: str = "github",
+        ci_artifact_includes: Optional[List[str]] = None,
     ) -> bool:
         """
         Create GitHub Actions workflow file
@@ -590,6 +635,13 @@ class RepositorySetup:
             output_dir: Output directory for compiled files (e.g., "build")
             fonts_dir: Directory containing custom fonts
             install_fonts: Whether to install fonts in CI
+            ci_bibliography: CI bibliography policy
+            ci_runner_policy: CI runner policy
+            ci_github_runner: GitHub-hosted runner label
+            ci_self_hosted_label: Self-hosted runner label
+            ci_self_hosted_org: Organization for self-hosted auto-discovery
+            ci_release_policy: CI release policy
+            ci_artifact_includes: Extra artifact path globs
 
         Returns:
             True if successful
@@ -610,6 +662,13 @@ class RepositorySetup:
             output_dir,
             fonts_dir,
             install_fonts,
+            ci_bibliography,
+            ci_runner_policy,
+            ci_github_runner,
+            ci_self_hosted_label,
+            ci_self_hosted_org,
+            ci_release_policy,
+            ci_artifact_includes or [],
         )
 
         workflow_path.write_text(workflow_content, encoding="utf-8")
@@ -625,6 +684,13 @@ class RepositorySetup:
         output_dir: str = "",
         fonts_dir: str = "",
         install_fonts: bool = False,
+        ci_bibliography: str = "off",
+        ci_runner_policy: str = "github",
+        ci_github_runner: str = "ubuntu-24.04",
+        ci_self_hosted_label: str = "self-texlive",
+        ci_self_hosted_org: str = "",
+        ci_release_policy: str = "github",
+        ci_artifact_includes: Optional[List[str]] = None,
     ) -> str:
         """
         Get GitHub Actions workflow template.
@@ -637,14 +703,19 @@ class RepositorySetup:
             output_dir: Output directory for compiled files
             fonts_dir: Directory containing custom fonts
             install_fonts: Whether to install fonts in CI
-            style: Built-in document style
-            template: Local custom template path
-            main_document: Main document written to project config
+            ci_bibliography: CI bibliography policy
+            ci_runner_policy: CI runner policy
+            ci_github_runner: GitHub-hosted runner label
+            ci_self_hosted_label: Self-hosted runner label
+            ci_self_hosted_org: Organization for self-hosted auto-discovery
+            ci_release_policy: CI release policy
+            ci_artifact_includes: Extra artifact path globs
 
         Returns:
             Workflow YAML content
         """
         additional_documents = additional_documents or []
+        ci_artifact_includes = ci_artifact_includes or []
         workflow_documents = self._workflow_documents(additional_documents)
         is_typst = project_type.startswith("typst-") or source_file.endswith(".typ")
         use_xelatex = project_type in ["presentation", "poster"]
@@ -669,6 +740,13 @@ class RepositorySetup:
                 "output_dir_label": output_dir if output_dir else "root",
                 "fonts_dir": fonts_dir,
                 "install_fonts": install_fonts,
+                "runner_policy": ci_runner_policy,
+                "github_runner": ci_github_runner,
+                "self_hosted_label": ci_self_hosted_label,
+                "self_hosted_org": ci_self_hosted_org,
+                "bibliography_policy": ci_bibliography,
+                "release_policy": ci_release_policy,
+                "artifact_includes": ci_artifact_includes,
                 "latex_engine_label": (
                     "Typst" if is_typst else "XeLaTeX" if use_xelatex else "pdfLaTeX"
                 ),
@@ -698,6 +776,13 @@ class RepositorySetup:
         style: str = "default",
         template: str = "",
         main_document: str = "",
+        ci_bibliography: str = "off",
+        ci_runner_policy: str = "github",
+        ci_github_runner: str = "ubuntu-24.04",
+        ci_self_hosted_label: str = "self-texlive",
+        ci_self_hosted_org: str = "",
+        ci_release_policy: str = "github",
+        ci_artifact_includes: Optional[List[str]] = None,
     ) -> bool:
         """
         Create pyproject.toml file.
@@ -718,6 +803,13 @@ class RepositorySetup:
             style: Built-in document style
             template: Local custom template path
             main_document: Main document written to project config
+            ci_bibliography: CI bibliography policy
+            ci_runner_policy: CI runner policy
+            ci_github_runner: GitHub-hosted runner label
+            ci_self_hosted_label: Self-hosted runner label
+            ci_self_hosted_org: Organization for self-hosted auto-discovery
+            ci_release_policy: CI release policy
+            ci_artifact_includes: Extra artifact path globs
 
         Returns:
             True if successful
@@ -729,6 +821,7 @@ class RepositorySetup:
             return True
 
         additional_documents = additional_documents or []
+        ci_artifact_includes = ci_artifact_includes or []
         if project_type.startswith("typst-"):
             default_engine = "typst"
         elif project_type in ["presentation", "poster"]:
@@ -767,6 +860,16 @@ class RepositorySetup:
                 "fonts_dir": fonts_dir,
                 "fonts_dir_toml": self._toml_string(fonts_dir),
                 "install_fonts": install_fonts,
+                "runner_policy_toml": self._toml_string(ci_runner_policy),
+                "github_runner_toml": self._toml_string(ci_github_runner),
+                "self_hosted_label_toml": self._toml_string(ci_self_hosted_label),
+                "self_hosted_org_toml": self._toml_string(ci_self_hosted_org),
+                "bibliography_policy_toml": self._toml_string(ci_bibliography),
+                "release_policy_toml": self._toml_string(ci_release_policy),
+                "artifact_include_entries": [
+                    TemplateValue(self._toml_string(path))
+                    for path in ci_artifact_includes
+                ],
             },
         )
 
@@ -783,6 +886,9 @@ class RepositorySetup:
         force: bool,
         project_type: str = "article",
         style: str = "default",
+        ci_bibliography: str = "off",
+        ci_runner_policy: str = "github",
+        ci_release_policy: str = "github",
     ) -> bool:
         """
         Create README.md file.
@@ -795,6 +901,9 @@ class RepositorySetup:
             force: Overwrite if exists
             project_type: Type of project
             style: Built-in or custom document style
+            ci_bibliography: CI bibliography policy
+            ci_runner_policy: CI runner policy
+            ci_release_policy: CI release policy
 
         Returns:
             True if successful
@@ -834,6 +943,9 @@ class RepositorySetup:
                 "build_cmd": build_cmd,
                 "doc_type": doc_type,
                 "style": style or "default",
+                "ci_bibliography": ci_bibliography,
+                "ci_runner_policy": ci_runner_policy,
+                "ci_release_policy": ci_release_policy,
                 "citation_key": project_name.replace("-", "_"),
                 "authors_bibtex": " and ".join(authors),
             },

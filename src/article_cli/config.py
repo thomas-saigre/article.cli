@@ -226,6 +226,15 @@ class Config:
             "output_dir": self.get("workflow", "output_dir", ""),
             "fonts_dir": self.get("workflow", "fonts_dir", ""),
             "install_fonts": self.get("workflow", "install_fonts", False),
+            "runner_policy": self.get("workflow", "runner_policy", "github"),
+            "github_runner": self.get("workflow", "github_runner", "ubuntu-24.04"),
+            "self_hosted_label": self.get(
+                "workflow", "self_hosted_label", "self-texlive"
+            ),
+            "self_hosted_org": self.get("workflow", "self_hosted_org", ""),
+            "bibliography": self.get("workflow", "bibliography", "off"),
+            "release": self.get("workflow", "release", "github"),
+            "artifact_includes": self.get("workflow", "artifact_includes", []),
         }
 
     def get_presentation_config(self) -> Dict[str, Any]:
@@ -461,6 +470,22 @@ main = "main.tex"
 
 # Workflow settings for GitHub Actions
 [workflow]
+# Runner policy: "github", "self-hosted", or "self-hosted-auto".
+runner_policy = "github"
+github_runner = "ubuntu-24.04"
+self_hosted_label = "self-texlive"
+# Self-hosted auto-discovery only runs when this organization is set.
+self_hosted_org = ""
+
+# Bibliography policy in generated CI: "off", "check", "update", or "required".
+bibliography = "off"
+
+# Release policy in generated CI: "github" or "off".
+release = "github"
+
+# Extra artifact path globs to include in generated CI artifacts.
+artifact_includes = []
+
 # Output directory for compiled files (empty string means root directory)
 # output_dir = "build"
 

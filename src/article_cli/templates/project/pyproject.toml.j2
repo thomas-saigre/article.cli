@@ -93,8 +93,18 @@ additional = [
 # additional = ["poster.tex"]
 [% endif %]
 
-[% if output_dir or fonts_dir or install_fonts %]
 [tool.article-cli.workflow]
+runner_policy = [[ runner_policy_toml ]]
+github_runner = [[ github_runner_toml ]]
+self_hosted_label = [[ self_hosted_label_toml ]]
+self_hosted_org = [[ self_hosted_org_toml ]]
+bibliography = [[ bibliography_policy_toml ]]
+release = [[ release_policy_toml ]]
+artifact_includes = [
+[% for path in artifact_include_entries %]
+    [[ path.name ]],
+[% endfor %]
+]
 [% if output_dir %]
 output_dir = [[ output_dir_toml ]]
 [% endif %]
@@ -103,5 +113,4 @@ fonts_dir = [[ fonts_dir_toml ]]
 [% endif %]
 [% if install_fonts %]
 install_fonts = true
-[% endif %]
 [% endif %]
