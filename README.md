@@ -400,7 +400,7 @@ Release versions must follow the semantic versioning format:
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - Git repository with gitinfo2 package (for LaTeX integration)
 - Zotero account with API access (for bibliography features)
 - Typst CLI (for Typst compilation) - install from https://typst.app/

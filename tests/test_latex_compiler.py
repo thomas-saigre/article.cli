@@ -194,11 +194,13 @@ class TestLaTeXCompilerEngines:
 
     def test_compile_refreshes_gitinfo2_metadata(self, compiler, mock_tex_path):
         """Test compile refreshes gitinfo2 metadata before building"""
-        with patch(
-            "article_cli.latex_compiler.refresh_gitinfo2_metadata", return_value=True
-        ) as refresh_mock, patch.object(
-            compiler, "_compile_once", return_value=True
-        ) as compile_mock:
+        with (
+            patch(
+                "article_cli.latex_compiler.refresh_gitinfo2_metadata",
+                return_value=True,
+            ) as refresh_mock,
+            patch.object(compiler, "_compile_once", return_value=True) as compile_mock,
+        ):
             result = compiler.compile(str(mock_tex_path), engine="latexmk")
 
         refresh_mock.assert_called_once_with(mock_tex_path.parent)
