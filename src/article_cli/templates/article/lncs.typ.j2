@@ -1,0 +1,69 @@
+// Typst Article, LNCS-oriented skeleton
+// Title: [[ title ]]
+// Authors: [[ authors_display ]]
+//
+// Replace this skeleton with the exact Typst package or house template required
+// by the target venue when one is mandated.
+
+#set document(
+  title: "[[ title ]]",
+  author: (
+[% for author in authors %]
+    "[[ author ]]",
+[% endfor %]
+  ),
+)
+
+#set page(
+  paper: "a4",
+  margin: (x: 3.0cm, y: 3.0cm),
+  numbering: "1",
+)
+
+#set text(font: "Libertinus Serif", size: 10pt)
+#set heading(numbering: "1.")
+#show heading.where(level: 1): it => block(above: 1.0em, below: 0.4em, strong(it))
+
+#align(center)[
+  #text(size: 16pt, weight: "bold")[ [[ title ]] ]
+
+  #v(0.5cm)
+
+  [[ authors_display ]]
+
+  #v(0.4cm)
+
+  Your Institution
+]
+
+#v(0.7cm)
+
+#heading(numbering: none)[Abstract]
+
+Your abstract goes here.
+
+#heading(numbering: none)[Keywords]
+
+Keyword one; keyword two; keyword three.
+
+= Introduction
+
+Your introduction goes here.
+
+= Methodology
+
+Your methodology goes here.
+
+= Results
+
+Your results go here.
+
+= Conclusion
+
+Your conclusion goes here.
+
+#heading(numbering: none)[Acknowledgements]
+
+Add acknowledgements here.
+
+#bibliography("references.bib", style: "springer-basic")

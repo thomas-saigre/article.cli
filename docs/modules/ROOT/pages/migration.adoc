@@ -1,0 +1,90 @@
+= Migration Notes
+:description: Move older article-cli repositories to the current lifecycle.
+
+Older repositories may lack template metadata, generated workflow policy, managed hook blocks, or the release configuration introduced in the current lifecycle.
+
+== Recommended Migration
+
+1. Install the current tool.
++
+[source,console]
+----
+uv tool install article-cli
+----
+
+2. Add template metadata if missing.
++
+[source,toml]
+----
+[tool.article-cli.template]
+version = "1"
+----
+
+3. Ensure the main document is configured.
++
+[source,toml]
+----
+[tool.article-cli.documents]
+main = "main.tex"
+----
+
+4. Add release policy.
++
+[source,toml]
+----
+[tool.article-cli.release]
+tag_policy = "paper"
+compile = true
+check_pdf = true
+checksum = true
+bibliography = "off"
+github_release = false
+----
+
+5. Add workflow policy if the repository uses generated GitHub Actions.
++
+[source,toml]
+----
+[tool.article-cli.workflow]
+runner_policy = "github"
+github_runner = "ubuntu-24.04"
+bibliography = "off"
+release = "github"
+artifact_includes = []
+----
+
+6. Run diagnostics and safe repairs.
++
+[source,console]
+----
+article-cli doctor
+article-cli doctor --fix
+----
+
+7. Compile and verify version metadata.
++
+[source,console]
+----
+article-cli version
+article-cli compile
+----
+
+== Common Changes
+
+`create` command::
+`article-cli create` is retained as a compatibility alias.
+Use `article-cli release` in new documentation and scripts.
+
+Inline workflows::
+Generated workflows are now rendered from package Jinja2 templates and record `article-cli` minimum version and template version.
+
+Repository-owned hooks::
+The repository-owned `hooks/post-commit` source is created when missing.
+Managed git hook blocks are installed into `.git/hooks` while preserving existing shell hook content.
+
+Bibliography files::
+Use `local_references.bib` for manual BibTeX entries that should not be lost when Zotero-managed `references.bib` is refreshed.
+
+Release tags::
+Paper tags such as `v1` are accepted by the default `paper` policy.
+Use `semver` only for repositories that require strict `vX.Y.Z` tags.

@@ -1,0 +1,60 @@
+= Paper Lifecycle
+:description: The article-cli command sequence for reproducible paper repositories.
+
+`article-cli` separates the paper lifecycle into explicit commands.
+Each command owns a narrow part of the repository state.
+
+== Command Roles
+
+`init`::
+Create the repository files for a new paper: document template, project configuration, workflow, README, ignore rules, editor settings, and template metadata.
+
+`setup`::
+Install managed gitinfo2 hooks and refresh `gitHeadLocal.gin`.
+The command is idempotent and preserves existing shell hook logic.
+
+`doctor`::
+Report repository, hook, build, bibliography, workflow, and release readiness.
+Use `doctor --json` in CI and `doctor --fix` for safe local repairs.
+
+`bib update`::
+Refresh deterministic BibTeX from Zotero.
+Use `--check` in CI or release preparation when the checked-in bibliography must already be current.
+
+`compile`::
+Build the configured document.
+The command reports the selected engine, output directory, version metadata, page count when `pdfinfo` is available, and common LaTeX warning counts.
+
+`version`::
+Refresh and report gitinfo2 metadata without creating a tag.
+
+`release`::
+Create a checked paper release.
+The release flow validates the tag, checks the working tree, optionally checks or updates the bibliography, refreshes metadata, compiles before and after tagging, verifies the PDF text, writes a checksum, and optionally pushes or creates a GitHub release.
+
+== Recommended Local Flow
+
+[source,console]
+----
+article-cli doctor
+article-cli doctor --fix
+article-cli bib update --dry-run
+article-cli bib update
+article-cli compile
+article-cli version
+article-cli release v1 --dry-run
+article-cli release v1
+----
+
+== CI Flow
+
+Generated GitHub Actions workflows use `uv`, install `article-cli`, run `article-cli setup`, upload `article-cli doctor --json`, compile the document, and upload the resulting PDF.
+Bibliography and release behavior are controlled by `[tool.article-cli.workflow]`.
+
+== Release Guarantees and Limits
+
+The release command is intentionally conservative.
+It does not commit, force-retag, push, or create a GitHub release unless the corresponding flag or configuration enables that behavior.
+
+It verifies repository consistency, but it does not remove normal HPC or TeX variability.
+The useful guarantee is traceability: the source state, generated metadata, PDF text, release tag, and checksum are checked together.

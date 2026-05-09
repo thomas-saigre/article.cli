@@ -1,0 +1,81 @@
+= Command Reference
+:description: High-level reference for article-cli commands.
+
+This page summarizes the command surface.
+Run `article-cli COMMAND --help` for exact options.
+
+== Initialization
+
+[source,console]
+----
+article-cli init --title "Title" --authors "A. Author,B. Author"
+article-cli init --type presentation --theme numpex
+article-cli init --type typst-article
+article-cli init --style ieee
+article-cli init --template path/to/custom-template.j2
+----
+
+== Setup and Diagnostics
+
+[source,console]
+----
+article-cli setup
+article-cli setup --dry-run
+article-cli doctor
+article-cli doctor --fix
+article-cli doctor --json
+article-cli doctor --tag v1
+----
+
+== Bibliography
+
+[source,console]
+----
+article-cli bib update
+article-cli bib update --dry-run
+article-cli bib update --check
+article-cli bib update --include-local --merged-output references.all.bib
+----
+
+== Build
+
+[source,console]
+----
+article-cli compile
+article-cli compile main.tex
+article-cli compile --engine xelatex
+article-cli compile --engine typst main.typ
+article-cli compile --watch
+article-cli compile --clean-first --clean-after
+----
+
+== Version and Release
+
+[source,console]
+----
+article-cli version
+article-cli version --dry-run
+article-cli release v1 --dry-run
+article-cli release v1
+article-cli release v1 --bib check --push
+article-cli release v1 --github-release --push
+article-cli list --count 10
+article-cli delete v1
+----
+
+== Assets
+
+[source,console]
+----
+article-cli install-fonts
+article-cli install-theme --list
+article-cli install-theme numpex
+----
+
+== Configuration
+
+[source,console]
+----
+article-cli config show
+article-cli --config .article-cli.toml config show
+----

@@ -16,17 +16,19 @@ A command-line tool for managing LaTeX and Typst documents with git integration 
 - **GitHub Actions Workflows**: Automated PDF compilation with XeLaTeX support, artifact upload, and GitHub releases
 - **Git Release Management**: Create, list, and delete releases with gitinfo2 support
 - **Zotero Integration**: Synchronize bibliography from Zotero with robust pagination and error handling
+- **Lifecycle Commands**: Use `init`, `setup`, `doctor`, `bib update`, `compile`, `version`, and `release`
 - **LaTeX Build Management**: Clean build files and manage LaTeX compilation artifacts
 - **Git Hooks Setup**: Automated setup of git hooks for gitinfo2 integration
+- **Repository Diagnostics**: `doctor` checks for git, hooks, build tools, Zotero, workflows, release readiness, and safe repairs with `--fix`
 - **Project Configuration**: Auto-generates pyproject.toml with article-cli settings
-- **Documentation**: Creates README with build instructions and usage guide
+- **Documentation**: Creates project README files and ships an Antora documentation site
 
 ## Installation
 
 ### From PyPI (recommended)
 
 ```bash
-pip install article-cli
+uv tool install article-cli
 ```
 
 ### From Source
@@ -34,8 +36,31 @@ pip install article-cli
 ```bash
 git clone https://github.com/feelpp/article.cli.git
 cd article.cli
-pip install -e .
+uv sync --all-extras --dev
+uv run article-cli --help
 ```
+
+### Development Commands
+
+```bash
+uv sync --all-extras --dev
+uv run pytest
+uv run black --check src tests
+uv run mypy src
+uv build
+```
+
+### Documentation Site
+
+The documentation site is built with Antora and the Feel++ Antora UI bundle:
+
+```bash
+npm install
+npm run docs:build
+npm run docs:preview
+```
+
+The generated site is written to `build/site`.
 
 ## Quick Start
 
@@ -62,8 +87,12 @@ pip install -e .
 
 3. **Setup git hooks and update bibliography**:
    ```bash
+   article-cli doctor
+   article-cli doctor --fix
+   article-cli setup --dry-run
    article-cli setup
-   article-cli update-bibtex
+   article-cli bib update --dry-run
+   article-cli bib update
    ```
 
 4. **Commit and push** to trigger automated PDF compilation!
@@ -72,6 +101,8 @@ pip install -e .
 
 1. **Setup git hooks** (run once per repository):
    ```bash
+   article-cli doctor
+   article-cli doctor --fix
    article-cli setup
    ```
 
@@ -83,12 +114,15 @@ pip install -e .
 
 3. **Update bibliography from Zotero**:
    ```bash
-   article-cli update-bibtex
+   article-cli bib update
    ```
 
-4. **Create a release**:
+4. **Compile, refresh version metadata, and create a release**:
    ```bash
-   article-cli create v1.0.0
+   article-cli compile
+   article-cli version
+   article-cli release v1.0.0 --dry-run
+   article-cli release v1.0.0
    ```
 
 ## Configuration
@@ -111,8 +145,17 @@ group_id = "4678293"  # Default for article.template
 output_file = "references.bib"
 
 [git]
-auto_push = true
+auto_push = false
 default_branch = "main"
+
+[workflow]
+runner_policy = "github"
+github_runner = "ubuntu-24.04"
+self_hosted_label = "self-texlive"
+self_hosted_org = ""
+bibliography = "off"
+release = "github"
+artifact_includes = []
 
 [latex]
 clean_extensions = [".aux", ".bbl", ".blg", ".log", ".out", ".synctex.gz"]
@@ -169,6 +212,13 @@ article-cli init --title "My Article" --authors "Author" --tex-file article.tex
 
 # Force overwrite existing files
 article-cli init --title "My Article" --authors "Author" --force
+
+# Generate CI that checks Zotero bibliography freshness
+article-cli init --title "My Article" --authors "Author" --ci-bib check
+
+# Generate CI with opt-in self-hosted runner discovery
+article-cli init --title "My Article" --authors "Author" \
+  --ci-runner-policy self-hosted-auto --ci-self-hosted-org my-org
 ```
 
 The `init` command sets up:
@@ -182,27 +232,48 @@ The `init` command sets up:
 ### Git Release Management
 
 ```bash
-# Create a new release
-article-cli create v1.2.3
+# Refresh gitinfo2 version metadata
+article-cli version
+
+# Refresh metadata, compile, and check the PDF version text
+article-cli version --compile --check-pdf
+
+# Preview a new release tag
+article-cli release v1 --dry-run
+
+# Create a checked local release tag
+article-cli release v1
+
+# Check bibliography freshness during release, then push the tag
+article-cli release v1 --bib check --push
 
 # List recent releases
 article-cli list --count 10
 
 # Delete a release
 article-cli delete v1.2.3
+
+# Deprecated alias retained for compatibility
+article-cli create v1.2.3
 ```
 
 ### Bibliography Management
 
 ```bash
+# Preview bibliography update
+article-cli bib update --dry-run
+
 # Update bibliography from Zotero
-article-cli update-bibtex
+article-cli bib update
 
 # Specify custom output file
-article-cli update-bibtex --output my-refs.bib
+article-cli bib update --output my-refs.bib
 
 # Skip backup creation
-article-cli update-bibtex --no-backup
+article-cli bib update --no-backup
+
+# Deprecated alias retained for compatibility
+article-cli update-bibtex
 ```
 
 ### LaTeX Compilation
@@ -334,6 +405,15 @@ article-cli compile presentation.typ --font-path fonts/
 ### Project Setup
 
 ```bash
+# Diagnose repository readiness without modifying files
+article-cli doctor
+
+# Emit machine-readable diagnostics for CI
+article-cli doctor --json
+
+# Apply safe repairs for hooks, output directories, and gitHeadLocal.gin
+article-cli doctor --fix
+
 # Setup git hooks for gitinfo2
 article-cli setup
 
@@ -345,24 +425,28 @@ article-cli clean
 
 ```bash
 # Override configuration via command line
-article-cli update-bibtex --api-key YOUR_KEY --group-id YOUR_GROUP
+article-cli bib update --api-key YOUR_KEY --group-id YOUR_GROUP
 
 # Specify custom configuration file
-article-cli --config custom-config.toml update-bibtex
+article-cli --config custom-config.toml bib update
 ```
 
-## Version Format
+## Release Tags
 
-Release versions must follow the semantic versioning format:
-- `vX.Y.Z` for stable releases (e.g., `v1.2.3`)
-- `vX.Y.Z-pre.N` for pre-releases (e.g., `v1.2.3-pre.1`)
+The default paper release policy accepts short and full version tags:
+- `vX` for paper milestones (e.g., `v1`)
+- `vX.Y` or `vX.Y.Z` for more detailed paper releases
+- `vX.Y.Z-rc.N`, `vX.Y.Z-beta.N`, or similar pre-release suffixes
+
+Use `[tool.article-cli.release] tag_policy = "semver"` when a repository must require strict `vX.Y.Z` semantic-version tags. The release command does not commit, force-retag, push, or create a GitHub release unless the corresponding explicit flag is passed.
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - Git repository with gitinfo2 package (for LaTeX integration)
 - Zotero account with API access (for bibliography features)
 - Typst CLI (for Typst compilation) - install from https://typst.app/
+- Node.js 20+ for building the Antora documentation site
 
 ## License
 
@@ -377,6 +461,13 @@ MIT License - see LICENSE file for details.
 5. Open a Pull Request
 
 ## Changelog
+
+### v1.5.0
+- Add `doctor` diagnostics with JSON output and safe `--fix` repairs
+- Split CLI implementation into command modules
+- Make setup hooks more robust and worktree-safe
+- Standardize development and CI workflows on `uv`
+- Add an Antora documentation site using the Feel++ Antora UI
 
 ### v1.4.0
 - Add full Typst document compilation support

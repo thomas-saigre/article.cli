@@ -5,13 +5,15 @@ Provides compilation functionality for Typst documents with support for
 watch mode and custom font paths.
 """
 
+import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from .config import Config
-from .zotero import print_error, print_info, print_success
+from .reporting import print_error, print_info, print_success
 
 
 class TypstCompiler:
@@ -92,6 +94,7 @@ class TypstCompiler:
                 if pdf_path.exists():
                     print_success(f"✅ Compilation successful: {pdf_path}")
                     self._show_pdf_info(pdf_path)
+                    self._show_pdf_page_count(pdf_path)
                 else:
                     print_error("Compilation reported success but PDF not found")
                     return False
@@ -243,6 +246,26 @@ class TypstCompiler:
 
         except Exception:
             pass  # Silently ignore errors getting file info
+
+    def _show_pdf_page_count(self, pdf_path: Path) -> None:
+        """Print PDF page count when pdfinfo is available."""
+        if shutil.which("pdfinfo") is None:
+            return
+        try:
+            result = subprocess.run(
+                ["pdfinfo", str(pdf_path)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        except Exception:
+            return
+        if result.returncode != 0:
+            return
+        match = re.search(r"^Pages:\s+(\d+)", result.stdout, re.MULTILINE)
+        if match:
+            print_info(f"PDF pages: {match.group(1)}")
 
     def check_dependencies(self) -> Dict[str, bool]:
         """

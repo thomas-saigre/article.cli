@@ -13,20 +13,19 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v8.1.0
       with:
-        python-version: "3.11"
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    
+        version: "latest"
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install 3.11
+
     - name: Build package
-      run: python -m build
-    
+      run: uv build
+
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       # Uses trusted publishing - no tokens needed!
@@ -45,5 +44,5 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📋 Installation" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-        echo "pip install --upgrade article-cli" >> $GITHUB_STEP_SUMMARY
+        echo "uv tool install article-cli" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

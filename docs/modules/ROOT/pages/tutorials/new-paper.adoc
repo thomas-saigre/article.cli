@@ -1,0 +1,77 @@
+= Initialize a New Paper
+:description: Create a new LaTeX or Typst paper repository with article-cli.
+
+This tutorial starts from an empty or existing Git repository.
+
+== Create the Repository
+
+[source,console]
+----
+mkdir my-paper
+cd my-paper
+git init
+article-cli init --title "My Paper" --authors "A. Author,B. Author"
+----
+
+For Typst:
+
+[source,console]
+----
+article-cli init --title "My Paper" --authors "A. Author" --type typst-article
+----
+
+For a specific LaTeX style:
+
+[source,console]
+----
+article-cli init --title "My Paper" --authors "A. Author" --style ieee
+article-cli init --title "My Paper" --authors "A. Author" --style lncs
+----
+
+== Inspect and Repair Setup
+
+[source,console]
+----
+article-cli doctor
+article-cli doctor --fix
+----
+
+`doctor --fix` can create the configured output directory, create the repository-owned hook source, install managed git hooks, and refresh `gitHeadLocal.gin`.
+It does not commit, tag, push, or overwrite unrelated user hook logic.
+
+== Configure Zotero
+
+Use environment variables for credentials:
+
+[source,console]
+----
+export ZOTERO_API_KEY="your-api-key"
+export ZOTERO_GROUP_ID="{zotero-group-example}"
+----
+
+Project defaults live in `pyproject.toml`.
+
+== Build
+
+[source,console]
+----
+article-cli bib update --dry-run
+article-cli bib update
+article-cli compile
+----
+
+== First Commit
+
+[source,console]
+----
+git add .
+git commit -m "Initialize paper repository"
+----
+
+After the first commit, rerun:
+
+[source,console]
+----
+article-cli version
+article-cli compile
+----

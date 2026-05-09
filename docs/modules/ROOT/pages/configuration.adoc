@@ -1,0 +1,93 @@
+= Configuration
+:description: Configure article-cli through pyproject.toml, local config, CLI flags, and environment variables.
+
+`article-cli` resolves settings from command-line flags, project configuration, local configuration files, and environment variables.
+Command-line flags are intended for explicit one-off overrides.
+Repository policy should live in `pyproject.toml`.
+
+== Project Metadata
+
+[source,toml]
+----
+[tool.article-cli.template]
+version = "1"
+
+[tool.article-cli.project]
+type = "article"
+style = "ieee"
+
+[tool.article-cli.documents]
+main = "main.tex"
+additional = ["supplement.tex"]
+----
+
+Generated repositories record the template version so future migrations can identify the generator layout.
+
+== Bibliography
+
+[source,toml]
+----
+[tool.article-cli.zotero]
+group_id = "4709047"
+collection_id = ""
+output_file = "references.bib"
+local_file = "local_references.bib"
+deterministic = true
+----
+
+Use environment variables for secrets:
+
+[source,console]
+----
+export ZOTERO_API_KEY="your-api-key"
+export ZOTERO_GROUP_ID="4709047"
+----
+
+== Build
+
+[source,toml]
+----
+[tool.article-cli.latex]
+engine = "latexmk"
+shell_escape = false
+build_dir = "."
+
+[tool.article-cli.typst]
+build_dir = "build"
+font_paths = ["fonts"]
+----
+
+== Workflow
+
+[source,toml]
+----
+[tool.article-cli.workflow]
+runner_policy = "github"
+github_runner = "ubuntu-24.04"
+self_hosted_label = "self-texlive"
+self_hosted_org = ""
+bibliography = "off"
+release = "github"
+artifact_includes = []
+output_dir = "build"
+----
+
+`runner_policy` can keep generated workflows on GitHub-hosted runners or opt into self-hosted runners.
+Bibliography behavior can be disabled, checked, updated, or required depending on repository policy.
+
+== Release
+
+[source,toml]
+----
+[tool.article-cli.release]
+tag_policy = "paper"
+allow_dirty = false
+compile = true
+check_pdf = true
+checksum = true
+bibliography = "off"
+github_release = false
+----
+
+The default `paper` tag policy accepts `v1`, `v1.0`, `v1.0.0`, and release-candidate suffixes.
+Use `tag_policy = "semver"` for strict semantic-version tags.

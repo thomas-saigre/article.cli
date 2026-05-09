@@ -192,6 +192,21 @@ class TestLaTeXCompilerEngines:
 
         assert result is False
 
+    def test_compile_refreshes_gitinfo2_metadata(self, compiler, mock_tex_path):
+        """Test compile refreshes gitinfo2 metadata before building"""
+        with (
+            patch(
+                "article_cli.latex_compiler.refresh_gitinfo2_metadata",
+                return_value=True,
+            ) as refresh_mock,
+            patch.object(compiler, "_compile_once", return_value=True) as compile_mock,
+        ):
+            result = compiler.compile(str(mock_tex_path), engine="latexmk")
+
+        refresh_mock.assert_called_once_with(mock_tex_path.parent)
+        compile_mock.assert_called_once_with(mock_tex_path, "latexmk", False, None)
+        assert result is True
+
     # --- Test _compile_watch restrictions ---
 
     def test_compile_watch_rejects_pdflatex(self, compiler, mock_tex_path):
@@ -270,8 +285,8 @@ class TestLaTeXCompilerCommandExecution:
             mock_tex_path, shell_escape=False, output_dir=None
         )
 
-        # Should have been called 3 times (3 passes)
-        assert mock_run.call_count == 3
+        # Should have run at least the 3 LaTeX passes; optional pdfinfo may add one.
+        assert mock_run.call_count >= 3
         assert result is True
 
     @patch("subprocess.run")
@@ -288,8 +303,8 @@ class TestLaTeXCompilerCommandExecution:
             mock_tex_path, shell_escape=False, output_dir=None
         )
 
-        # Should have been called 3 times (3 passes)
-        assert mock_run.call_count == 3
+        # Should have run at least the 3 LaTeX passes; optional pdfinfo may add one.
+        assert mock_run.call_count >= 3
         assert result is True
 
     @patch("subprocess.run")
@@ -337,3 +352,43 @@ class TestLaTeXCompilerCommandExecution:
         )
 
         assert result is False
+
+    def test_verify_pdf_reports_page_count_and_latex_log_warnings(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """Successful compilation should summarize page count and common warnings."""
+
+        class PdfInfoRunner:
+            def run(self, command, **kwargs):
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout="Title: test\nPages:          4\n",
+                    stderr="",
+                )
+
+        tex_path = tmp_path / "paper.tex"
+        tex_path.write_text("\\documentclass{article}\n")
+        tex_path.with_suffix(".pdf").write_bytes(b"%PDF-1.4")
+        tex_path.with_suffix(".log").write_text(
+            "\n".join(
+                [
+                    "LaTeX Warning: Citation `missing' on page 1 undefined",
+                    "LaTeX Warning: Reference `fig:test' on page 1 undefined",
+                    "Overfull \\hbox (1.0pt too wide) in paragraph",
+                ]
+            )
+        )
+        monkeypatch.setattr(
+            "article_cli.latex_compiler.shutil.which",
+            lambda command: "/usr/bin/pdfinfo" if command == "pdfinfo" else None,
+        )
+        compiler = LaTeXCompiler(Config(quiet=True), runner=PdfInfoRunner())
+
+        assert compiler._verify_pdf(tex_path, output_dir=None) is True
+
+        output = capsys.readouterr().out
+        assert "PDF pages: 4" in output
+        assert "Undefined citations: 1" in output
+        assert "Undefined references: 1" in output
+        assert "Overfull boxes: 1" in output

@@ -10,39 +10,48 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: [3.9, "3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v8.1.0
       with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
+        version: "latest"
+        enable-cache: true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies with uv
       run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest black flake8 mypy types-requests
-    
+        uv sync --all-extras --dev --python ${{ matrix.python-version }}
+
     - name: Lint with flake8
       run: |
-        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
+        uv run flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        uv run flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
     - name: Check formatting with black
-      run: black --check src/
-    
+      run: uv run black --check src tests
+
     - name: Type check with mypy
-      run: mypy src/
-    
+      run: uv run mypy src/
+
+    - name: Run tests
+      run: uv run pytest
+
     - name: Test CLI installation
       run: |
-        article-cli --version
-        article-cli --help
-    
+        uv run article-cli --version
+        uv run article-cli --help
+        uv run article-cli doctor --help
+        uv run article-cli doctor --json > article-cli-doctor.json || true
+        python -m json.tool article-cli-doctor.json > /dev/null
+
     - name: Generate test summary
       if: always()
       run: |
@@ -51,6 +60,7 @@ jobs:
         echo "- ✅ Formatting (black): Passed" >> $GITHUB_STEP_SUMMARY  
         echo "- ✅ Type checking (mypy): Passed" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ CLI installation: Passed" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Doctor JSON smoke test: Passed" >> $GITHUB_STEP_SUMMARY
 
   build:
     needs: test
@@ -59,23 +69,25 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v8.1.0
       with:
-        python-version: "3.11"
-    
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-    
+        version: "latest"
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies with uv
+      run: uv sync --all-extras --dev --python 3.11
+
     - name: Build package
-      run: python -m build
-    
+      run: uv build
+
     - name: Check package
-      run: twine check dist/*
-    
+      run: uv run twine check dist/*
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:

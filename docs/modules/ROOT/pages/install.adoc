@@ -1,0 +1,57 @@
+= Install
+:description: Install article-cli with uv and set up a development checkout.
+
+== User Installation
+
+Install the published command with `uv`:
+
+[source,console]
+----
+uv tool install article-cli
+article-cli --help
+----
+
+Upgrade an existing tool installation with:
+
+[source,console]
+----
+uv tool upgrade article-cli
+----
+
+== Development Checkout
+
+[source,console]
+----
+git clone https://github.com/feelpp/article.cli.git
+cd article.cli
+uv sync --all-extras --dev
+uv run article-cli --help
+----
+
+The supported Python versions are {python-supported}.
+
+== Development Checks
+
+[source,console]
+----
+uv run pytest
+uv run black --check src tests
+uv run flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+uv run mypy src/
+uv build
+----
+
+The GitHub Actions workflow runs the test suite across Python 3.9 through 3.13.
+
+== Documentation Site
+
+The documentation is an Antora site using the Feel++ Antora UI bundle.
+
+[source,console]
+----
+npm install
+npm run docs:build
+npm run docs:preview
+----
+
+The generated site is written to `build/site`.

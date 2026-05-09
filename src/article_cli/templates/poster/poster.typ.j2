@@ -1,0 +1,97 @@
+// Typst Poster
+// Title: [[ title ]]
+// Authors: [[ authors_display ]]
+
+#set page(paper: "a0", margin: 2cm)
+#set text(font: "Helvetica Neue", size: 24pt)
+
+// Header
+#align(center)[
+  #text(size: 72pt, weight: "bold")[ [[ title ]] ]
+
+  #v(1cm)
+
+  #text(size: 36pt)[ [[ authors_display ]] ]
+
+  #text(size: 28pt)[Your Institution]
+]
+
+#v(2cm)
+
+#columns(3, gutter: 2cm)[
+  // Column 1
+  #block(
+    fill: rgb("#f0f0f0"),
+    inset: 1cm,
+    radius: 10pt,
+    width: 100%,
+  )[
+    #text(size: 36pt, weight: "bold")[Introduction]
+
+    #v(0.5cm)
+
+    Your introduction goes here.
+  ]
+
+  #v(1cm)
+
+  #block(
+    fill: rgb("#f0f0f0"),
+    inset: 1cm,
+    radius: 10pt,
+    width: 100%,
+  )[
+    #text(size: 36pt, weight: "bold")[Methods]
+
+    #v(0.5cm)
+
+    Your methods description goes here.
+  ]
+
+  #colbreak()
+
+  // Column 2
+  #block(
+    fill: rgb("#f0f0f0"),
+    inset: 1cm,
+    radius: 10pt,
+    width: 100%,
+  )[
+    #text(size: 36pt, weight: "bold")[Results]
+
+    #v(0.5cm)
+
+    Your results go here.
+  ]
+
+  #colbreak()
+
+  // Column 3
+  #block(
+    fill: rgb("#f0f0f0"),
+    inset: 1cm,
+    radius: 10pt,
+    width: 100%,
+  )[
+    #text(size: 36pt, weight: "bold")[Conclusions]
+
+    #v(0.5cm)
+
+    Your conclusions go here.
+  ]
+
+  #v(1cm)
+
+  #block(
+    fill: rgb("#e8f4ea"),
+    inset: 1cm,
+    radius: 10pt,
+    width: 100%,
+  )[
+    #text(size: 36pt, weight: "bold")[References]
+
+    #v(0.5cm)
+
+    Your references go here.
+  ]
+]

@@ -11,7 +11,7 @@ from typing import List, Dict, Optional, Any
 
 import requests
 
-from .zotero import print_error, print_info, print_success, print_warning
+from .reporting import print_error, print_info, print_success, print_warning
 
 # Default font sources for common themes
 # Note: Marianne font from French government requires manual download due to Cloudflare protection.

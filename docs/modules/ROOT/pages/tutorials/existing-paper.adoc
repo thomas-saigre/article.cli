@@ -1,0 +1,73 @@
+= Set Up an Existing Paper
+:description: Bring an existing LaTeX or Typst repository under article-cli management.
+
+Use this flow when the paper already has source files and possibly an existing bibliography.
+
+== Add Project Configuration
+
+Create or update `pyproject.toml`:
+
+[source,toml]
+----
+[tool.article-cli.documents]
+main = "main.tex"
+
+[tool.article-cli.latex]
+engine = "latexmk"
+build_dir = "."
+
+[tool.article-cli.zotero]
+group_id = "4709047"
+output_file = "references.bib"
+local_file = "local_references.bib"
+deterministic = true
+
+[tool.article-cli.release]
+tag_policy = "paper"
+compile = true
+check_pdf = true
+checksum = true
+----
+
+For Typst, set the main document to a `.typ` file and configure `[tool.article-cli.typst]` if a build directory or font paths are needed.
+
+== Preserve Existing References
+
+If the repository already has a curated `references.bib`, do not overwrite it blindly.
+Move manual entries that are not managed by Zotero into `local_references.bib`, then run:
+
+[source,console]
+----
+article-cli bib update --dry-run
+article-cli bib update --include-local --merged-output references.all.bib
+----
+
+Use the merged file only if the paper is configured to cite both Zotero-managed and local entries.
+
+== Install Hooks and Check Readiness
+
+[source,console]
+----
+article-cli doctor
+article-cli doctor --fix
+article-cli setup
+----
+
+`setup` and `doctor --fix` are safe to rerun.
+Existing shell hooks are preserved and the article-cli managed gitinfo2 block is updated in place.
+
+== Compile
+
+[source,console]
+----
+article-cli compile
+----
+
+If compilation fails, run:
+
+[source,console]
+----
+article-cli doctor
+----
+
+The report highlights missing tools, wrong engine selection, missing output directories, stale version metadata, missing bibliography files, and workflow issues.

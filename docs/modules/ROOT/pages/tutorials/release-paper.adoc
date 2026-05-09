@@ -1,0 +1,71 @@
+= Release a Paper
+:description: Create a checked paper release with article-cli.
+
+The release command binds the tag, source state, gitinfo2 metadata, compiled PDF, and optional checksum together.
+
+== Check the Repository
+
+[source,console]
+----
+article-cli doctor --tag v1
+article-cli release v1 --dry-run
+----
+
+The dry run does not create tags, commits, builds, checksums, pushes, or GitHub releases.
+
+== Create a Local Release
+
+[source,console]
+----
+article-cli release v1
+----
+
+By default, the command:
+
+* validates the tag according to `[tool.article-cli.release].tag_policy`;
+* rejects dirty files other than `gitHeadLocal.gin`;
+* refreshes gitinfo2 metadata;
+* compiles before tagging;
+* creates the annotated tag;
+* refreshes metadata again;
+* compiles after tagging;
+* checks that the PDF text contains the release tag;
+* writes a `.sha256` sidecar when checksums are enabled.
+
+== Bibliography Policy
+
+To require the checked-in bibliography to be current:
+
+[source,console]
+----
+article-cli release v1 --bib check
+----
+
+To update the bibliography during the release:
+
+[source,console]
+----
+article-cli release v1 --bib update
+----
+
+== Push and GitHub Release
+
+[source,console]
+----
+article-cli release v1 --push
+article-cli release v1 --github-release --push
+----
+
+These operations are explicit.
+The default release command leaves pushing and GitHub release creation to the user.
+
+== If the Post-Tag Check Fails
+
+If a failure occurs after the local tag has been created, the command prints rollback guidance:
+
+[source,console]
+----
+git tag -d v1
+----
+
+Fix the issue, rerun the dry run, then recreate the release.

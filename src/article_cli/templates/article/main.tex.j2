@@ -1,0 +1,58 @@
+\documentclass[a4paper,11pt]{article}
+
+% Essential packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+
+% Bibliography
+\usepackage[style=numeric,sorting=none]{biblatex}
+\addbibresource{references.bib}
+
+% Git version information
+\usepackage{gitinfo2}
+
+% Title and authors
+\title{[[ title ]]}
+\author{[[ authors_latex ]]}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    Your abstract goes here.
+\end{abstract}
+
+\section{Introduction}
+
+Your introduction goes here.
+
+\section{Methodology}
+
+Your methodology goes here.
+
+\section{Results}
+
+Your results go here.
+
+\section{Conclusion}
+
+Your conclusion goes here.
+
+% Print bibliography
+\printbibliography
+
+% Git information (optional - appears in footer)
+\vfill
+\hrule
+\small
+\noindent Git version: \gitAbbrevHash{} (\gitAuthorIsoDate) \\
+Branch: \gitBranch
+
+\end{document}

@@ -21,14 +21,19 @@ except ImportError:
 class Config:
     """Configuration manager for article-cli"""
 
-    def __init__(self, config_file: Optional[Union[str, Path]] = None):
+    def __init__(
+        self, config_file: Optional[Union[str, Path]] = None, quiet: bool = False
+    ):
         """
         Initialize configuration manager
 
         Args:
             config_file: Optional path to configuration file
+            quiet: Suppress informational config-loading messages
         """
         self.config_file = config_file
+        self.quiet = quiet
+        self.loaded_config_file: Optional[Path] = None
         self._config_data: Dict[str, Any] = {}
         self._load_config()
 
@@ -60,6 +65,7 @@ class Config:
     def _load_config(self) -> None:
         """Load configuration from file if it exists"""
         config_path = self._find_config_file()
+        self.loaded_config_file = config_path.resolve() if config_path else None
 
         if config_path and tomllib:
             try:
@@ -73,9 +79,10 @@ class Config:
                         "article-cli", {}
                     )
                     if self._config_data:
-                        print(
-                            f"Loaded configuration from: {config_path} [tool.article-cli]"
-                        )
+                        if not self.quiet:
+                            print(
+                                f"Loaded configuration from: {config_path} [tool.article-cli]"
+                            )
                     else:
                         # Fallback: look for legacy sections at root level
                         legacy_sections = ["zotero", "git", "latex"]
@@ -83,19 +90,25 @@ class Config:
                             k: v for k, v in full_config.items() if k in legacy_sections
                         }
                         if self._config_data:
-                            print(f"Loaded legacy configuration from: {config_path}")
+                            if not self.quiet:
+                                print(
+                                    f"Loaded legacy configuration from: {config_path}"
+                                )
                 else:
                     # Dedicated config file - use as-is
                     self._config_data = full_config
-                    print(f"Loaded configuration from: {config_path}")
+                    if not self.quiet:
+                        print(f"Loaded configuration from: {config_path}")
 
             except Exception as e:
-                print(f"Warning: Could not load config file {config_path}: {e}")
+                if not self.quiet:
+                    print(f"Warning: Could not load config file {config_path}: {e}")
                 self._config_data = {}
         elif config_path and not tomllib:
-            print(
-                "Warning: TOML support not available. Install with: pip install tomli"
-            )
+            if not self.quiet:
+                print(
+                    "Warning: TOML support not available. Install dependencies with: uv sync"
+                )
             self._config_data = {}
         else:
             self._config_data = {}
@@ -125,15 +138,21 @@ class Config:
 
         return default
 
-    def get_zotero_config(self) -> Dict[str, Optional[str]]:
+    def get_zotero_config(self) -> Dict[str, Any]:
         """Get Zotero-specific configuration"""
         return {
             "api_key": self.get("zotero", "api_key", env_var="ZOTERO_API_KEY"),
             "user_id": self.get("zotero", "user_id", env_var="ZOTERO_USER_ID"),
             "group_id": self.get("zotero", "group_id", env_var="ZOTERO_GROUP_ID"),
+            "collection_id": self.get(
+                "zotero", "collection_id", "", env_var="ZOTERO_COLLECTION_ID"
+            ),
             "output_file": self.get(
                 "zotero", "output_file", "references.bib", env_var="BIBTEX_FILE"
             ),
+            "local_file": self.get("zotero", "local_file", "local_references.bib"),
+            "merged_output_file": self.get("zotero", "merged_output_file", ""),
+            "deterministic": self.get("zotero", "deterministic", True),
         }
 
     def get_git_config(self) -> Dict[str, Any]:
@@ -141,6 +160,18 @@ class Config:
         return {
             "auto_push": self.get("git", "auto_push", False),
             "default_branch": self.get("git", "default_branch", "main"),
+        }
+
+    def get_release_config(self) -> Dict[str, Any]:
+        """Get release workflow configuration."""
+        return {
+            "tag_policy": self.get("release", "tag_policy", "paper"),
+            "allow_dirty": self.get("release", "allow_dirty", False),
+            "compile": self.get("release", "compile", True),
+            "check_pdf": self.get("release", "check_pdf", True),
+            "checksum": self.get("release", "checksum", True),
+            "bibliography": self.get("release", "bibliography", "off"),
+            "github_release": self.get("release", "github_release", False),
         }
 
     def get_latex_config(self) -> Dict[str, Any]:
@@ -178,6 +209,8 @@ class Config:
         """Get project-level configuration"""
         return {
             "project_type": self.get("project", "type", "article"),
+            "style": self.get("project", "style", "default"),
+            "template": self.get("project", "template", ""),
         }
 
     def get_documents_config(self) -> Dict[str, Any]:
@@ -193,6 +226,15 @@ class Config:
             "output_dir": self.get("workflow", "output_dir", ""),
             "fonts_dir": self.get("workflow", "fonts_dir", ""),
             "install_fonts": self.get("workflow", "install_fonts", False),
+            "runner_policy": self.get("workflow", "runner_policy", "github"),
+            "github_runner": self.get("workflow", "github_runner", "ubuntu-24.04"),
+            "self_hosted_label": self.get(
+                "workflow", "self_hosted_label", "self-texlive"
+            ),
+            "self_hosted_org": self.get("workflow", "self_hosted_org", ""),
+            "bibliography": self.get("workflow", "bibliography", "off"),
+            "release": self.get("workflow", "release", "github"),
+            "artifact_includes": self.get("workflow", "artifact_includes", []),
         }
 
     def get_presentation_config(self) -> Dict[str, Any]:
@@ -255,9 +297,7 @@ class Config:
             "build_dir": self.get("typst", "build_dir", ""),
         }
 
-    def validate_zotero_config(
-        self, args: argparse.Namespace
-    ) -> Dict[str, Optional[str]]:
+    def validate_zotero_config(self, args: argparse.Namespace) -> Dict[str, Any]:
         """
         Validate and merge Zotero configuration from args and config
 
@@ -279,8 +319,14 @@ class Config:
             config["user_id"] = args.user_id
         if hasattr(args, "group_id") and args.group_id:
             config["group_id"] = args.group_id
+        if hasattr(args, "collection") and args.collection:
+            config["collection_id"] = args.collection
         if hasattr(args, "output") and args.output:
             config["output_file"] = args.output
+        if hasattr(args, "local_file") and args.local_file:
+            config["local_file"] = args.local_file
+        if hasattr(args, "merged_output") and args.merged_output:
+            config["merged_output_file"] = args.merged_output
 
         # Validate required fields
         if not config["api_key"]:
@@ -328,12 +374,35 @@ group_id = "4678293"  # Default group ID for article.template
 # Output file for bibliography
 output_file = "references.bib"
 
+# Optional Zotero collection or subcollection key
+# collection_id = ""
+
+# Optional local/manual entries. Use article-cli bib update --include-local
+# to merge them into the output or --merged-output to write a separate file.
+local_file = "local_references.bib"
+# merged_output_file = ""
+
+# Deterministic output omits timestamps and writes only when content changes.
+deterministic = true
+
 [git]
 # Automatically push after creating releases
-auto_push = true
+auto_push = false
 
 # Default branch name
 default_branch = "main"
+
+[release]
+# Tag policy: "paper" accepts v1, v1.0, v1.0.0 and prerelease suffixes.
+# Use "semver" for strict vX.Y.Z, or "loose" for any non-space tag.
+tag_policy = "paper"
+allow_dirty = false
+compile = true
+check_pdf = true
+checksum = true
+# bibliography policy: "off", "check", or "update"
+bibliography = "off"
+github_release = false
 
 [latex]
 # File extensions to clean
@@ -358,8 +427,13 @@ shell_escape = false
 timeout = 300
 
 [project]
-# Project type: "article", "presentation", or "poster"
+# Project type: "article", "typst-article", "presentation", "typst-presentation",
+# "poster", or "typst-poster"
 type = "article"
+
+# Built-in source style for generated article files, e.g. "default", "lncs", "ieee".
+# Use article-cli init --template PATH for a project-specific Jinja2 template.
+style = "default"
 
 # Presentation-specific settings (only used when type = "presentation")
 [presentation]
@@ -396,6 +470,22 @@ main = "main.tex"
 
 # Workflow settings for GitHub Actions
 [workflow]
+# Runner policy: "github", "self-hosted", or "self-hosted-auto".
+runner_policy = "github"
+github_runner = "ubuntu-24.04"
+self_hosted_label = "self-texlive"
+# Self-hosted auto-discovery only runs when this organization is set.
+self_hosted_org = ""
+
+# Bibliography policy in generated CI: "off", "check", "update", or "required".
+bibliography = "off"
+
+# Release policy in generated CI: "github" or "off".
+release = "github"
+
+# Extra artifact path globs to include in generated CI artifacts.
+artifact_includes = []
+
 # Output directory for compiled files (empty string means root directory)
 # output_dir = "build"
 

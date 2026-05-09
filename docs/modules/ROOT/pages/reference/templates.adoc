@@ -1,0 +1,58 @@
+= Templates and Styles
+:description: article-cli template metadata, built-in styles, and custom templates.
+
+Generated repositories record the template version in `pyproject.toml`:
+
+[source,toml]
+----
+[tool.article-cli.template]
+version = "1"
+----
+
+This metadata gives future migration tooling a stable way to identify which repository layout generated the paper.
+
+== Built-In Project Types
+
+`article`::
+LaTeX article repository.
+
+`presentation`::
+LaTeX Beamer repository.
+
+`poster`::
+LaTeX poster repository.
+
+`typst-article`::
+Typst article repository.
+
+`typst-presentation`::
+Typst presentation repository.
+
+`typst-poster`::
+Typst poster repository.
+
+== Article Styles
+
+The article initializer supports built-in styles such as `default`, `ieee`, and `lncs`.
+
+[source,console]
+----
+article-cli init --title "Paper" --authors "A. Author" --style ieee
+article-cli init --title "Paper" --authors "A. Author" --style lncs
+----
+
+== Custom Templates
+
+Use a Jinja2 template for local or conference-specific requirements:
+
+[source,console]
+----
+article-cli init --title "Paper" --authors "A. Author" --template templates/paper.tex.j2
+----
+
+Custom templates receive the same context as built-in templates, including title, authors, project type, style, and template version.
+
+== Workflow Templates
+
+Generated GitHub Actions workflows are package templates.
+The workflow records the template version and minimum `article-cli` version in comments and installs `article-cli` through `uv`.

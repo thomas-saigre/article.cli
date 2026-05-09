@@ -1,0 +1,50 @@
+= Documentation Site
+:description: Build and publish the Antora documentation site.
+
+The documentation site is built with Antora and the Feel++ Antora UI bundle.
+
+== Local Build
+
+[source,console]
+----
+npm install
+npm run docs:build
+----
+
+The site is generated in `build/site`.
+
+Preview locally with:
+
+[source,console]
+----
+npm run docs:preview
+----
+
+== Playbook
+
+The root `antora-playbook.yml` points to the local `docs` component and uses the Feel++ UI bundle:
+
+[source,yaml]
+----
+ui:
+  bundle:
+    url: https://github.com/feelpp/antora-ui/releases/download/v0.52/ui-bundle.zip
+    snapshot: true
+----
+
+== Component Layout
+
+[source,text]
+----
+docs/
+|-- antora.yml
+`-- modules/
+    `-- ROOT/
+        |-- nav.adoc
+        `-- pages/
+----
+
+== Publishing
+
+The `docs.yml` GitHub Actions workflow builds the site and deploys `build/site` to GitHub Pages on pushes to `main`.
+Pull requests build the site without deploying it.

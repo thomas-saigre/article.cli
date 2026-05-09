@@ -22,15 +22,17 @@ This guide helps you set up the article-cli package for development and distribu
        └── test_config.py
    ```
 
-2. **Install in development mode**:
+2. **Install development dependencies with uv**:
    ```bash
    cd article-cli-package
-   pip install -e .
+   uv sync --all-extras --dev
    ```
 
-3. **Install development dependencies**:
+3. **Run checks through uv**:
    ```bash
-   pip install -e ".[dev]"
+   uv run pytest
+   uv run black --check src tests
+   uv run mypy src
    ```
 
 ## Building and Publishing
@@ -38,11 +40,8 @@ This guide helps you set up the article-cli package for development and distribu
 ### Build the Package
 
 ```bash
-# Install build tool
-pip install build
-
 # Build the package
-python -m build
+uv build
 ```
 
 This creates `dist/` directory with:
@@ -52,8 +51,8 @@ This creates `dist/` directory with:
 ### Test the Package Locally
 
 ```bash
-# Install from wheel
-pip install dist/article_cli-1.0.0-py3-none-any.whl
+# Install the local wheel into uv's tool environment
+uv tool install dist/article_cli-1.0.0-py3-none-any.whl --force
 
 # Test the CLI
 article-cli --help
@@ -61,26 +60,21 @@ article-cli --help
 
 ### Publish to PyPI
 
-1. **Install twine**:
-   ```bash
-   pip install twine
-   ```
-
-2. **Test upload to TestPyPI first**:
+1. **Test upload to TestPyPI first**:
    ```bash
    # Register at https://test.pypi.org/ first
-   twine upload --repository testpypi dist/*
+   uv run twine upload --repository testpypi dist/*
    ```
 
-3. **Install from TestPyPI to verify**:
+2. **Install from TestPyPI to verify**:
    ```bash
-   pip install --index-url https://test.pypi.org/simple/ article-cli
+   uv tool install --index-url https://test.pypi.org/simple/ article-cli
    ```
 
-4. **Upload to real PyPI**:
+3. **Upload to real PyPI**:
    ```bash
    # Register at https://pypi.org/ first
-   twine upload dist/*
+   uv run twine upload dist/*
    ```
 
 ## Migration Strategy
@@ -100,8 +94,8 @@ article-cli --help
    # Remove old a.cli
    rm a.cli
    
-   # Create requirements.txt
-   echo "article-cli>=1.0.0" > requirements.txt
+   # Create or update pyproject.toml with article-cli as a dependency
+   uv add article-cli
    
    # Update setup instructions in README
    ```
@@ -111,15 +105,12 @@ article-cli --help
    #!/bin/bash
    echo "Setting up article repository..."
    
-   # Install article-cli
-   pip install article-cli
-   
-   # Setup git hooks
-   article-cli setup
+   # Run article-cli from uv
+   uvx article-cli setup
    
    # Create local config if it doesn't exist
    if [ ! -f .article-cli.toml ]; then
-       article-cli config create
+       uvx article-cli config create
        echo "Please edit .article-cli.toml with your Zotero credentials"
    fi
    
@@ -137,7 +128,7 @@ For each existing article repository:
 
 2. **Install the package**:
    ```bash
-   pip install article-cli
+   uv tool install article-cli
    ```
 
 3. **Create local configuration**:
@@ -196,7 +187,7 @@ auto_push = true
 ## Benefits of This Approach
 
 1. **Centralized Maintenance**: Update once, benefit everywhere
-2. **Easy Installation**: `pip install article-cli`
+2. **Easy Installation**: `uv tool install article-cli`
 3. **Configuration Management**: Project-specific and global settings
 4. **Better Error Handling**: Improved user experience
 5. **Documentation**: Comprehensive help and examples
@@ -207,15 +198,15 @@ auto_push = true
 
 ```bash
 # Run tests
-pytest tests/
+uv run pytest
 
 # Run with coverage
-pytest --cov=article_cli tests/
+uv run pytest --cov=article_cli
 
 # Lint code
-flake8 src/
-black src/ tests/
-mypy src/
+uv run flake8 src/
+uv run black src tests
+uv run mypy src/
 ```
 
 ## Continuous Updates
@@ -225,4 +216,4 @@ When you need to update the tool:
 1. Make changes to the source code
 2. Update version in `pyproject.toml`
 3. Build and publish new version
-4. Users update with: `pip install --upgrade article-cli`
+4. Users update with: `uv tool upgrade article-cli`
