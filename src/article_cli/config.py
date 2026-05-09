@@ -138,15 +138,21 @@ class Config:
 
         return default
 
-    def get_zotero_config(self) -> Dict[str, Optional[str]]:
+    def get_zotero_config(self) -> Dict[str, Any]:
         """Get Zotero-specific configuration"""
         return {
             "api_key": self.get("zotero", "api_key", env_var="ZOTERO_API_KEY"),
             "user_id": self.get("zotero", "user_id", env_var="ZOTERO_USER_ID"),
             "group_id": self.get("zotero", "group_id", env_var="ZOTERO_GROUP_ID"),
+            "collection_id": self.get(
+                "zotero", "collection_id", "", env_var="ZOTERO_COLLECTION_ID"
+            ),
             "output_file": self.get(
                 "zotero", "output_file", "references.bib", env_var="BIBTEX_FILE"
             ),
+            "local_file": self.get("zotero", "local_file", "local_references.bib"),
+            "merged_output_file": self.get("zotero", "merged_output_file", ""),
+            "deterministic": self.get("zotero", "deterministic", True),
         }
 
     def get_git_config(self) -> Dict[str, Any]:
@@ -270,9 +276,7 @@ class Config:
             "build_dir": self.get("typst", "build_dir", ""),
         }
 
-    def validate_zotero_config(
-        self, args: argparse.Namespace
-    ) -> Dict[str, Optional[str]]:
+    def validate_zotero_config(self, args: argparse.Namespace) -> Dict[str, Any]:
         """
         Validate and merge Zotero configuration from args and config
 
@@ -294,8 +298,14 @@ class Config:
             config["user_id"] = args.user_id
         if hasattr(args, "group_id") and args.group_id:
             config["group_id"] = args.group_id
+        if hasattr(args, "collection") and args.collection:
+            config["collection_id"] = args.collection
         if hasattr(args, "output") and args.output:
             config["output_file"] = args.output
+        if hasattr(args, "local_file") and args.local_file:
+            config["local_file"] = args.local_file
+        if hasattr(args, "merged_output") and args.merged_output:
+            config["merged_output_file"] = args.merged_output
 
         # Validate required fields
         if not config["api_key"]:
@@ -342,6 +352,17 @@ group_id = "4678293"  # Default group ID for article.template
 
 # Output file for bibliography
 output_file = "references.bib"
+
+# Optional Zotero collection or subcollection key
+# collection_id = ""
+
+# Optional local/manual entries. Use article-cli bib update --include-local
+# to merge them into the output or --merged-output to write a separate file.
+local_file = "local_references.bib"
+# merged_output_file = ""
+
+# Deterministic output omits timestamps and writes only when content changes.
+deterministic = true
 
 [git]
 # Automatically push after creating releases

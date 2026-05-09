@@ -77,7 +77,13 @@ def _show_config(config: Config) -> int:
         else:
             print("  Group ID: Not set")
 
+        print(f"  Collection ID: {zotero_config['collection_id'] or 'Not set'}")
         print(f"  Output File: {zotero_config['output_file']}")
+        print(f"  Local File: {zotero_config['local_file']}")
+        print(
+            f"  Merged Output File: {zotero_config['merged_output_file'] or 'Not set'}"
+        )
+        print(f"  Deterministic Output: {zotero_config['deterministic']}")
 
         print("\n[Git]")
         print(f"  Auto Push: {git_config['auto_push']}")

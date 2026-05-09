@@ -27,7 +27,11 @@ version = "[[ template_version ]]"
 [tool.article-cli.zotero]
 group_id = [[ group_id_toml ]]  # Zotero group ID for this project
 # api_key = "your_api_key_here"  # Uncomment and add your API key or use ZOTERO_API_KEY env variable
+# collection_id = ""  # Optional Zotero collection or subcollection key
 output_file = "references.bib"
+local_file = "local_references.bib"
+# merged_output_file = "references.all.bib"
+deterministic = true
 
 [tool.article-cli.git]
 auto_push = false

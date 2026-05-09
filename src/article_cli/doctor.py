@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import importlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -487,8 +488,7 @@ class DoctorService:
         raw_workflow = workflow_path.read_text(errors="replace")
 
         try:
-            import yaml  # type: ignore[import-untyped]
-
+            yaml = importlib.import_module("yaml")
             yaml.safe_load(raw_workflow)
             self._add("workflow", "yaml-parse", "ok", "Workflow YAML parses.")
         except Exception as e:

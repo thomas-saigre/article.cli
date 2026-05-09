@@ -41,6 +41,7 @@ Examples:
   %(prog)s setup                          # Install managed gitinfo2 hooks
   %(prog)s doctor                         # Diagnose repository readiness
   %(prog)s bib update --dry-run           # Preview Zotero bibliography update
+  %(prog)s bib update --check             # Check checked-in bibliography freshness
   %(prog)s bib update                     # Update references from Zotero
   %(prog)s compile                        # Compile configured main document
   %(prog)s version                        # Refresh and report git metadata

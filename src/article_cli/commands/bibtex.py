@@ -45,12 +45,44 @@ def _add_update_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--api-key", help="Zotero API key")
     parser.add_argument("--user-id", help="Zotero user ID")
     parser.add_argument("--group-id", help="Zotero group ID")
+    parser.add_argument(
+        "--collection",
+        help="Zotero collection or subcollection key to export",
+    )
     parser.add_argument("--output", default=None, help="Output BibTeX file")
+    parser.add_argument(
+        "--local-file",
+        help="Local BibTeX file with manual entries (default: local_references.bib)",
+    )
+    parser.add_argument(
+        "--include-local",
+        action="store_true",
+        help="Include local BibTeX entries in the output or merged output",
+    )
+    parser.add_argument(
+        "--merged-output",
+        help="Write a combined Zotero + local BibTeX file to this path",
+    )
     parser.add_argument("--no-backup", action="store_true", help="Skip backup creation")
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate configuration and report the planned update without writing files",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check whether bibliography files are up to date without writing files",
+    )
+    parser.add_argument(
+        "--check-citations",
+        action="store_true",
+        help="Check that citation keys in project sources exist in the bibliography",
+    )
+    parser.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="Include a generated timestamp in the BibTeX header",
     )
 
 
@@ -63,6 +95,10 @@ def run(args: argparse.Namespace, config: Config) -> int:
             BibliographyUpdateOptions(
                 no_backup=bool(getattr(args, "no_backup", False)),
                 dry_run=bool(getattr(args, "dry_run", False)),
+                check=bool(getattr(args, "check", False)),
+                include_local=bool(getattr(args, "include_local", False)),
+                check_citations=bool(getattr(args, "check_citations", False)),
+                timestamp=bool(getattr(args, "timestamp", False)),
             ),
         )
         return 0 if success else 1

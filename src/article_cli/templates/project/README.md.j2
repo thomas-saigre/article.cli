@@ -46,6 +46,12 @@ Document style: `[[ style ]]`
    article-cli bib update
    ```
 
+   CI can check the checked-in bibliography without modifying it:
+
+   ```bash
+   article-cli bib update --check
+   ```
+
 ## Building the Document
 
 ### Local Build
@@ -80,6 +86,7 @@ This repository uses GitHub Actions for automated PDF compilation:
 .
 |-- [[ tex_file ]]              # Main source document
 |-- references.bib          # Bibliography, managed via Zotero
+|-- local_references.bib    # Optional manual BibTeX entries
 |-- pyproject.toml          # Project configuration
 |-- README.md               # This file
 `-- .github/
@@ -99,6 +106,8 @@ article-cli doctor
 
 # Update bibliography from Zotero
 article-cli bib update
+article-cli bib update --check
+article-cli bib update --include-local --merged-output references.all.bib
 
 # Build the configured document
 article-cli compile

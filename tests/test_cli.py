@@ -132,8 +132,15 @@ output_file = "zotero/references.bib"
         api_key=None,
         user_id=None,
         group_id=None,
+        collection=None,
         output=None,
+        local_file=None,
+        merged_output=None,
+        include_local=False,
         no_backup=True,
+        check=False,
+        check_citations=False,
+        timestamp=False,
     )
     config = Config()
 
@@ -146,9 +153,19 @@ output_file = "zotero/references.bib"
         api_key="test-key",
         user_id=None,
         group_id="4709047",
+        collection_id=None,
         output_file="zotero/references.bib",
     )
-    updater_cls.return_value.update.assert_called_once_with(backup=False)
+    updater_cls.return_value.update.assert_called_once_with(
+        backup=False,
+        check=False,
+        include_local=False,
+        local_file="local_references.bib",
+        merged_output_file=None,
+        check_citations=False,
+        citation_sources=[],
+        timestamp=False,
+    )
 
 
 def test_update_bibtex_cli_output_overrides_config(tmp_path, monkeypatch):
@@ -167,8 +184,15 @@ output_file = "zotero/references.bib"
         api_key=None,
         user_id=None,
         group_id=None,
+        collection=None,
         output="manual.bib",
+        local_file=None,
+        merged_output=None,
+        include_local=False,
         no_backup=True,
+        check=False,
+        check_citations=False,
+        timestamp=False,
     )
     config = Config()
 
@@ -196,9 +220,16 @@ output_file = "references.bib"
         api_key=None,
         user_id=None,
         group_id=None,
+        collection=None,
         output=None,
+        local_file=None,
+        merged_output=None,
+        include_local=False,
         no_backup=False,
         dry_run=True,
+        check=False,
+        check_citations=False,
+        timestamp=False,
     )
     config = Config(quiet=True)
 
