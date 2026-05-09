@@ -1,0 +1,57 @@
+// Typst Article
+// Title: [[ title ]]
+// Authors: [[ authors_display ]]
+
+#set document(
+  title: "[[ title ]]",
+  author: (
+[% for author in authors %]
+    "[[ author ]]",
+[% endfor %]
+  ),
+)
+
+#set page(
+  paper: "a4",
+  margin: (x: 2.5cm, y: 2.5cm),
+  numbering: "1",
+)
+
+#set text(font: "Libertinus Serif", size: 11pt)
+#set heading(numbering: "1.")
+
+#align(center)[
+  #text(size: 18pt, weight: "bold")[ [[ title ]] ]
+
+  #v(0.6cm)
+
+  [[ authors_display ]]
+
+  #v(0.6cm)
+
+  #datetime.today().display("[month repr:long] [day], [year]")
+]
+
+#v(0.8cm)
+
+#heading(numbering: none)[Abstract]
+
+Your abstract goes here.
+
+= Introduction
+
+Your introduction goes here.
+
+= Methodology
+
+Your methodology goes here.
+
+= Results
+
+Your results go here.
+
+= Conclusion
+
+Your conclusion goes here.
+
+#bibliography("references.bib", style: "ieee")

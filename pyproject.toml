@@ -30,6 +30,7 @@ keywords = ["latex", "typst", "git", "zotero", "bibliography", "academic", "rese
 dependencies = [
     "requests>=2.28.0",
     "PyYAML>=6.0",
+    "Jinja2>=3.1",
     "tomli>=2.0.0; python_version < '3.11'",
 ]
 

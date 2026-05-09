@@ -1,0 +1,143 @@
+# [[ title ]]
+
+## Authors
+
+[% for author in authors %]
+- [[ author ]]
+[% endfor %]
+
+## Overview
+
+This repository contains the source for the [[ doc_type ]] "[[ title ]]".
+
+Document style: `[[ style ]]`
+
+## Prerequisites
+
+- Python 3.8+ for bibliography management
+- LaTeX distribution, with TeX Live recommended
+- Git with the gitinfo2 package
+
+## Setup
+
+1. Install article-cli:
+
+   ```bash
+   uv tool install article-cli
+   ```
+
+2. Set up git hooks:
+
+   ```bash
+   article-cli setup
+   ```
+
+3. Configure Zotero for bibliography management:
+
+   Add `ZOTERO_API_KEY` as a GitHub Actions secret or set it locally:
+
+   ```bash
+   export ZOTERO_API_KEY="your_api_key_here"
+   ```
+
+4. Update the bibliography:
+
+   ```bash
+   article-cli bib update
+   ```
+
+## Building the Document
+
+### Local Build
+
+```bash
+[[ build_cmd ]]
+```
+
+Or using article-cli:
+
+```bash
+article-cli compile [[ tex_file ]]
+```
+
+### Clean Build Files
+
+```bash
+article-cli clean
+```
+
+## CI/CD
+
+This repository uses GitHub Actions for automated PDF compilation:
+
+- On push to `main`: compiles and uploads a PDF artifact.
+- On pull request: compiles and verifies the document.
+- On tag push (`v*`): creates a GitHub release with the PDF.
+
+## Project Structure
+
+```text
+.
+|-- [[ tex_file ]]              # Main source document
+|-- references.bib          # Bibliography, managed via Zotero
+|-- pyproject.toml          # Project configuration
+|-- README.md               # This file
+`-- .github/
+    `-- workflows/
+        `-- latex.yml       # CI/CD pipeline
+```
+
+## article-cli Commands
+
+```bash
+# Setup repository
+article-cli setup --dry-run
+article-cli setup
+
+# Diagnose repository readiness
+article-cli doctor
+
+# Update bibliography from Zotero
+article-cli bib update
+
+# Build the configured document
+article-cli compile
+
+# Refresh gitinfo2 version metadata
+article-cli version
+
+# Create a release tag
+article-cli release v1.0.0
+
+# List releases
+article-cli list
+
+# Clean LaTeX build files
+article-cli clean
+
+# Show configuration
+article-cli config show
+```
+
+## Development Workflow
+
+1. Make changes to LaTeX source files.
+2. Update bibliography if needed: `article-cli bib update`.
+3. Build locally: `article-cli compile`.
+4. Commit and push changes.
+5. Create a release tag for publication: `article-cli release v1.0.0 --push`.
+
+## License
+
+[Specify your license here]
+
+## Citation
+
+```bibtex
+@article{[[ citation_key ]],
+  title = {[[ title ]]},
+  author = {[[ authors_bibtex ]]},
+  year = {2025},
+  url = {https://github.com/feelpp/[[ project_name ]]}
+}
+```

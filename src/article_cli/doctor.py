@@ -736,7 +736,7 @@ class DoctorService:
         """Auto-detect a main .tex or .typ file."""
         for patterns in [
             ["main.tex", "article.tex", f"{project_root.name}.tex"],
-            ["main.typ"],
+            ["main.typ", "article.typ", f"{project_root.name}.typ"],
         ]:
             for pattern in patterns:
                 if (project_root / pattern).exists():

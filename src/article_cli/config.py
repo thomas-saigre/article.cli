@@ -191,6 +191,8 @@ class Config:
         """Get project-level configuration"""
         return {
             "project_type": self.get("project", "type", "article"),
+            "style": self.get("project", "style", "default"),
+            "template": self.get("project", "template", ""),
         }
 
     def get_documents_config(self) -> Dict[str, Any]:
@@ -371,8 +373,13 @@ shell_escape = false
 timeout = 300
 
 [project]
-# Project type: "article", "presentation", or "poster"
+# Project type: "article", "typst-article", "presentation", "typst-presentation",
+# "poster", or "typst-poster"
 type = "article"
+
+# Built-in source style for generated article files, e.g. "default", "lncs", "ieee".
+# Use article-cli init --template PATH for a project-specific Jinja2 template.
+style = "default"
 
 # Presentation-specific settings (only used when type = "presentation")
 [presentation]

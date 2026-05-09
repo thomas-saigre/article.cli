@@ -1,0 +1,94 @@
+# [[ project_type_title ]] Repository Dependency Management
+# This file manages dependencies for the LaTeX [[ project_type ]] project.
+
+[project]
+name = [[ project_name_toml ]]
+version = "0.1.0"
+description = [[ title_toml ]]
+authors = [
+[% for author in author_entries %]
+    {name = [[ author.name ]]},
+[% endfor %]
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "article-cli>=[[ article_cli_min_version ]]",
+    # Add other dependencies your project might need:
+    # "matplotlib>=3.5.0",
+    # "numpy>=1.20.0",
+    # "pandas>=1.3.0",
+]
+
+# Configuration for article-cli, embedded in pyproject.toml.
+[tool.article-cli.template]
+version = "[[ template_version ]]"
+
+[tool.article-cli.zotero]
+group_id = [[ group_id_toml ]]  # Zotero group ID for this project
+# api_key = "your_api_key_here"  # Uncomment and add your API key or use ZOTERO_API_KEY env variable
+output_file = "references.bib"
+
+[tool.article-cli.git]
+auto_push = false
+default_branch = "main"
+
+[tool.article-cli.latex]
+clean_extensions = [
+    ".aux", ".bbl", ".blg", ".log", ".out", ".pyg",
+    ".fls", ".synctex.gz", ".toc", ".fdb_latexmk",
+    ".idx", ".ilg", ".ind", ".lof", ".lot", ".nav", ".snm", ".vrb"
+]
+engine = "[[ default_engine ]]"
+
+[tool.article-cli.project]
+type = "[[ project_type ]]"
+style = [[ style_toml ]]
+[% if custom_template %]
+template = [[ template_toml ]]
+[% endif %]
+
+[% if project_type == "presentation" or project_type == "typst-presentation" %]
+[tool.article-cli.presentation]
+theme = [[ theme_toml ]]
+aspect_ratio = "[[ aspect_ratio ]]"
+color_theme = ""
+font_theme = ""
+
+[% elif project_type == "poster" or project_type == "typst-poster" %]
+[tool.article-cli.poster]
+size = "a0"
+orientation = "portrait"
+columns = 3
+
+[% endif %]
+[% if project_type.startswith("typst-") %]
+[tool.article-cli.typst]
+build_dir = ""
+font_paths = []
+
+[% endif %]
+[tool.article-cli.documents]
+main = [[ main_document_toml ]]
+[% if additional_documents %]
+additional = [
+[% for doc in additional_document_entries %]
+    [[ doc.name ]],
+[% endfor %]
+]
+[% else %]
+# additional = ["poster.tex"]
+[% endif %]
+
+[% if output_dir or fonts_dir or install_fonts %]
+[tool.article-cli.workflow]
+[% if output_dir %]
+output_dir = [[ output_dir_toml ]]
+[% endif %]
+[% if fonts_dir %]
+fonts_dir = [[ fonts_dir_toml ]]
+[% endif %]
+[% if install_fonts %]
+install_fonts = true
+[% endif %]
+[% endif %]

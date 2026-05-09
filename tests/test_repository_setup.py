@@ -5,13 +5,22 @@ Tests project type support including article, presentation, and poster templates
 """
 
 import subprocess
+import json
 import shutil
 import tempfile
 from pathlib import Path
 
+import yaml
+
 from article_cli.git_hooks import refresh_gitinfo2_metadata
 from article_cli.git_manager import GitManager
 from article_cli.repository_setup import RepositorySetup
+from article_cli.template_renderer import TEMPLATE_VERSION
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python < 3.11
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 def init_git_repository(path: Path) -> None:
@@ -27,6 +36,23 @@ def init_git_repository(path: Path) -> None:
         cwd=path,
         check=True,
     )
+
+
+def assert_generated_project_files_parse(root: Path) -> None:
+    """Assert generated structured project files are syntactically valid."""
+    pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+    settings = json.loads((root / ".vscode" / "settings.json").read_text())
+    workflow_text = (root / ".github" / "workflows" / "latex.yml").read_text()
+    workflow = yaml.safe_load(workflow_text)
+
+    assert pyproject["tool"]["article-cli"]["template"]["version"] == TEMPLATE_VERSION
+    if "latex-workshop.latex.recipes" in settings:
+        assert settings["latex-workshop.latex.recipes"]
+    else:
+        assert settings["typst-lsp.exportPdf"] == "onSave"
+    assert workflow["jobs"]["build_document"]
+    assert "${{ github.ref_name }}" in workflow_text
+    assert "article-cli>=1.5.0" in workflow_text
 
 
 class TestRepositorySetupProjectTypes:
@@ -53,6 +79,23 @@ class TestRepositorySetupProjectTypes:
             # Should create main.tex for articles
             assert result == "main.tex"
             assert (Path(temp_dir) / "main.tex").exists()
+
+    def test_detect_or_create_typst_article_default(self):
+        """Test default typ filename for Typst article type"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            result = setup._detect_or_create_tex_file(
+                None,
+                "Test Title",
+                ["Author One"],
+                False,
+                "typst-article",
+                "",
+                "169",
+            )
+
+            assert result == "main.typ"
+            assert (Path(temp_dir) / "main.typ").exists()
 
     def test_detect_or_create_tex_file_presentation_default(self):
         """Test default tex filename for presentation type"""
@@ -116,6 +159,51 @@ class TestArticleTemplate:
 
             # Template includes authors list
             assert "Alice Smith" in template or "Multi-Author Article" in template
+
+    def test_get_article_template_lncs_style(self):
+        """Test article template with LNCS style"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            template = setup._get_article_template(
+                "LNCS Article", ["Alice Smith"], "lncs"
+            )
+
+            assert "\\documentclass[runningheads]{llncs}" in template
+            assert "\\bibliographystyle{splncs04}" in template
+
+    def test_get_article_template_ieee_style(self):
+        """Test article template with IEEE style"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            template = setup._get_article_template(
+                "IEEE Article", ["Alice Smith"], "ieee"
+            )
+
+            assert "\\documentclass[conference]{IEEEtran}" in template
+            assert "\\bibliographystyle{IEEEtran}" in template
+
+    def test_get_typst_article_template(self):
+        """Test Typst article template generation"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            template = setup._get_typst_article_template(
+                "Typst Article", ["Alice Smith"]
+            )
+
+            assert "// Typst Article" in template
+            assert '#bibliography("references.bib"' in template
+
+    def test_get_custom_article_template(self, tmp_path):
+        """Test rendering a user-provided article template"""
+        custom_template = tmp_path / "custom.tex.j2"
+        custom_template.write_text("Title=[[ title ]]; Authors=[[ authors_display ]]")
+        setup = RepositorySetup(tmp_path)
+
+        template = setup._get_article_template(
+            "Custom Article", ["Alice Smith"], template=str(custom_template)
+        )
+
+        assert template == "Title=Custom Article; Authors=Alice Smith"
 
 
 class TestPresentationTemplate:
@@ -225,8 +313,12 @@ class TestConfigGeneration:
             assert pyproject_path.exists()
 
             content = pyproject_path.read_text()
+            parsed = tomllib.loads(content)
             assert "[tool.article-cli.project]" in content
             assert 'type = "article"' in content
+            assert (
+                parsed["tool"]["article-cli"]["template"]["version"] == TEMPLATE_VERSION
+            )
 
     def test_create_pyproject_presentation_type(self):
         """Test pyproject.toml generation for presentation type"""
@@ -246,6 +338,7 @@ class TestConfigGeneration:
             assert result is True
             pyproject_path = Path(temp_dir) / "pyproject.toml"
             content = pyproject_path.read_text()
+            parsed = tomllib.loads(content)
 
             assert "[tool.article-cli.project]" in content
             assert 'type = "presentation"' in content
@@ -254,6 +347,7 @@ class TestConfigGeneration:
             assert 'aspect_ratio = "169"' in content
             # Presentations should default to xelatex
             assert 'engine = "xelatex"' in content
+            assert parsed["tool"]["article-cli"]["latex"]["engine"] == "xelatex"
 
     def test_create_pyproject_poster_type(self):
         """Test pyproject.toml generation for poster type"""
@@ -273,10 +367,39 @@ class TestConfigGeneration:
             assert result is True
             pyproject_path = Path(temp_dir) / "pyproject.toml"
             content = pyproject_path.read_text()
+            parsed = tomllib.loads(content)
 
             assert "[tool.article-cli.project]" in content
             assert 'type = "poster"' in content
             assert "[tool.article-cli.poster]" in content
+            assert parsed["tool"]["article-cli"]["project"]["type"] == "poster"
+
+    def test_create_pyproject_typst_article_type(self):
+        """Test pyproject.toml generation for Typst article type"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            result = setup._create_pyproject(
+                "test-typst-article",
+                "Test Typst Article",
+                ["Author"],
+                "12345",
+                False,
+                "typst-article",
+                "",
+                "169",
+                style="lncs",
+                main_document="main.typ",
+            )
+
+            assert result is True
+            content = (Path(temp_dir) / "pyproject.toml").read_text()
+            parsed = tomllib.loads(content)
+
+            assert 'type = "typst-article"' in content
+            assert "[tool.article-cli.typst]" in content
+            assert parsed["tool"]["article-cli"]["latex"]["engine"] == "typst"
+            assert parsed["tool"]["article-cli"]["project"]["style"] == "lncs"
+            assert parsed["tool"]["article-cli"]["documents"]["main"] == "main.typ"
 
 
 class TestReadmeGeneration:
@@ -341,6 +464,26 @@ class TestReadmeGeneration:
             assert "latexmk -xelatex poster.tex" in content
             assert "poster" in content.lower()
 
+    def test_create_readme_typst_article_type(self):
+        """Test README.md generation for Typst article type"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            result = setup._create_readme(
+                "test-typst",
+                "Test Typst",
+                ["Author"],
+                "main.typ",
+                False,
+                "typst-article",
+                "lncs",
+            )
+
+            assert result is True
+            content = (Path(temp_dir) / "README.md").read_text()
+
+            assert "typst compile main.typ" in content
+            assert "Document style: `lncs`" in content
+
 
 class TestVSCodeSettingsGeneration:
     """Test cases for VS Code settings generation"""
@@ -359,8 +502,10 @@ class TestVSCodeSettingsGeneration:
             assert settings_path.exists()
 
             content = settings_path.read_text()
+            settings = json.loads(content)
             assert "latexmk-pdf" in content
             assert '"-pdf"' in content
+            assert settings["latex-workshop.latex.recipes"][0]["name"] == "latexmk-pdf"
 
     def test_create_vscode_settings_presentation(self):
         """Test VS Code settings for presentation type (xelatex)"""
@@ -374,9 +519,13 @@ class TestVSCodeSettingsGeneration:
             assert result is True
             settings_path = vscode_dir / "settings.json"
             content = settings_path.read_text()
+            settings = json.loads(content)
 
             assert "latexmk-xelatex" in content
             assert '"-xelatex"' in content
+            assert (
+                settings["latex-workshop.latex.recipes"][0]["name"] == "latexmk-xelatex"
+            )
 
     def test_create_vscode_settings_poster(self):
         """Test VS Code settings for poster type (xelatex)"""
@@ -390,9 +539,27 @@ class TestVSCodeSettingsGeneration:
             assert result is True
             settings_path = vscode_dir / "settings.json"
             content = settings_path.read_text()
+            settings = json.loads(content)
 
             assert "latexmk-xelatex" in content
             assert '"-xelatex"' in content
+            assert (
+                settings["latex-workshop.latex.recipes"][0]["name"] == "latexmk-xelatex"
+            )
+
+    def test_create_vscode_settings_typst_article(self):
+        """Test VS Code settings for Typst article type"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vscode_dir = Path(temp_dir) / ".vscode"
+            vscode_dir.mkdir()
+
+            setup = RepositorySetup(Path(temp_dir))
+            result = setup._create_vscode_settings(False, "typst-article")
+
+            assert result is True
+            settings = json.loads((vscode_dir / "settings.json").read_text())
+
+            assert settings["typst-lsp.exportPdf"] == "onSave"
 
 
 class TestGitHookSetup:
@@ -579,6 +746,34 @@ class TestFullRepositoryInit:
             assert (Path(temp_dir) / ".gitignore").exists()
             assert (Path(temp_dir) / ".vscode" / "settings.json").exists()
             assert (Path(temp_dir) / ".github" / "workflows").exists()
+            assert_generated_project_files_parse(Path(temp_dir))
+
+    def test_init_typst_article_repository(self):
+        """Test full Typst article repository initialization"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            result = setup.init_repository(
+                title="Test Typst Article",
+                authors=["Author One"],
+                group_id="12345",
+                force=False,
+                project_type="typst-article",
+                style="lncs",
+            )
+
+            root = Path(temp_dir)
+            assert result is True
+            assert (root / "main.typ").exists()
+            assert_generated_project_files_parse(root)
+
+            pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+            workflow = (root / ".github" / "workflows" / "latex.yml").read_text()
+
+            assert pyproject["tool"]["article-cli"]["latex"]["engine"] == "typst"
+            assert pyproject["tool"]["article-cli"]["project"]["style"] == "lncs"
+            assert pyproject["tool"]["article-cli"]["documents"]["main"] == "main.typ"
+            assert "typst-community/setup-typst@v4" in workflow
+            assert "Compile Typst document" in workflow
 
     def test_init_presentation_repository(self):
         """Test full presentation repository initialization"""
@@ -602,6 +797,7 @@ class TestFullRepositoryInit:
             pyproject = (Path(temp_dir) / "pyproject.toml").read_text()
             assert 'type = "presentation"' in pyproject
             assert "[tool.article-cli.presentation]" in pyproject
+            assert_generated_project_files_parse(Path(temp_dir))
 
     def test_init_poster_repository(self):
         """Test full poster repository initialization"""
@@ -623,6 +819,39 @@ class TestFullRepositoryInit:
             pyproject = (Path(temp_dir) / "pyproject.toml").read_text()
             assert 'type = "poster"' in pyproject
             assert "[tool.article-cli.poster]" in pyproject
+            assert_generated_project_files_parse(Path(temp_dir))
+
+    def test_init_multi_document_repository_with_fonts(self):
+        """Test workflow and config rendering for output dirs, fonts, and extra docs."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            setup = RepositorySetup(Path(temp_dir))
+            result = setup.init_repository(
+                title="Test Multi Document",
+                authors=["Author"],
+                group_id="12345",
+                force=False,
+                project_type="presentation",
+                additional_documents=["poster.tex"],
+                output_dir="build",
+                fonts_dir="fonts",
+                install_fonts=True,
+            )
+
+            assert result is True
+            root = Path(temp_dir)
+            assert_generated_project_files_parse(root)
+
+            pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+            workflow = (root / ".github" / "workflows" / "latex.yml").read_text()
+
+            assert pyproject["tool"]["article-cli"]["workflow"] == {
+                "output_dir": "build",
+                "fonts_dir": "fonts",
+                "install_fonts": True,
+            }
+            assert "Install custom fonts" in workflow
+            assert "poster.tex" in workflow
+            assert "poster.pdf" in workflow
 
 
 class TestConfigProjectMethods:

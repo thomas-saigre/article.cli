@@ -217,6 +217,7 @@ def _auto_detect_typ_file() -> Optional[str]:
 
     for pattern in [
         "main.typ",
+        "article.typ",
         "presentation.typ",
         "presentation.template.typ",
         f"{current_dir.name}.typ",

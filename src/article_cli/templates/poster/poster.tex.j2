@@ -1,0 +1,55 @@
+\documentclass[a0paper,portrait]{tikzposter}
+
+% Essential packages
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+% Git version information
+\usepackage{gitinfo2}
+
+% Title and authors
+\title{[[ title ]]}
+\author{[[ authors_latex ]]}
+\institute{Your Institution}
+\date{\today}
+
+% Theme
+\usetheme{Default}
+
+\begin{document}
+
+\maketitle
+
+\begin{columns}
+  \column{0.5}
+
+  \block{Introduction}{
+    Your introduction goes here.
+  }
+
+  \block{Methods}{
+    Your methods description goes here.
+  }
+
+  \column{0.5}
+
+  \block{Results}{
+    Your results go here.
+  }
+
+  \block{Conclusions}{
+    Your conclusions go here.
+  }
+
+\end{columns}
+
+\block{References}{
+  Your references go here.
+}
+
+\note[targetoffsetx=0cm, targetoffsety=-8cm, width=0.4\textwidth]{
+  Git version: \gitAbbrevHash{} (\gitAuthorIsoDate)
+}
+
+\end{document}

@@ -28,7 +28,7 @@ def add_parser(subparsers: Any) -> None:
     )
     parser.add_argument(
         "--tex-file",
-        help="Main .tex file (auto-detected if not specified)",
+        help="Main .tex or .typ file (auto-detected if not specified)",
     )
     parser.add_argument(
         "--force",
@@ -39,6 +39,7 @@ def add_parser(subparsers: Any) -> None:
         "--type",
         choices=[
             "article",
+            "typst-article",
             "presentation",
             "poster",
             "typst-presentation",
@@ -46,8 +47,9 @@ def add_parser(subparsers: Any) -> None:
         ],
         default="article",
         help=(
-            "Project type (default: article). Use 'presentation' for Beamer, "
-            "'typst-presentation' for Typst slides."
+            "Project type (default: article). Use 'typst-article' for a Typst "
+            "article, 'presentation' for Beamer, and 'typst-presentation' for "
+            "Typst slides."
         ),
     )
     parser.add_argument(
@@ -60,6 +62,22 @@ def add_parser(subparsers: Any) -> None:
         choices=["169", "43", "1610"],
         default="169",
         help="Aspect ratio for presentations (default: 169 for 16:9).",
+    )
+    parser.add_argument(
+        "--style",
+        default="default",
+        help=(
+            "Built-in article style to use when creating a new source file "
+            "(default: default; examples: lncs, ieee)."
+        ),
+    )
+    parser.add_argument(
+        "--template",
+        default="",
+        help=(
+            "Path to a custom Jinja2 source template for TeX or Typst articles. "
+            "Overrides --style for the generated source file."
+        ),
     )
     parser.set_defaults(handler=run)
 
@@ -81,6 +99,8 @@ def run(args: argparse.Namespace, config: Config) -> int:
                 project_type=args.type,
                 theme=args.theme,
                 aspect_ratio=args.aspect_ratio,
+                style=args.style,
+                template=args.template,
             )
             else 1
         )

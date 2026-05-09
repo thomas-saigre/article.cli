@@ -1,0 +1,128 @@
+{
+[% if is_typst %]
+    "typst-lsp.exportPdf": "onSave",
+    "typst-preview.preview.background.enabled": false,
+    "ltex.enabled": true,
+    "ltex.language": "en-US"
+[% else %]
+    "latex-workshop.latex.recipes": [
+[% if use_xelatex %]
+        {
+            "name": "latexmk-xelatex",
+            "tools": [
+                "latexmk-xelatex-shell-escape"
+            ]
+        },
+        {
+            "name": "latexmk-lualatex",
+            "tools": [
+                "latexmk-lualatex-shell-escape"
+            ]
+        },
+        {
+            "name": "xelatex-shell-escape-recipe",
+            "tools": [
+                "xelatex-shell-escape"
+            ]
+        }
+[% else %]
+        {
+            "name": "latexmk-pdf",
+            "tools": [
+                "latexmk-shell-escape"
+            ]
+        },
+        {
+            "name": "pdflatex-shell-escape-recipe",
+            "tools": [
+                "pdflatex-shell-escape"
+            ]
+        }
+[% endif %]
+    ],
+    "latex-workshop.latex.tools": [
+[% if use_xelatex %]
+        {
+            "name": "latexmk-xelatex-shell-escape",
+            "command": "latexmk",
+            "args": [
+                "--shell-escape",
+                "-xelatex",
+                "-interaction=nonstopmode",
+                "-synctex=1",
+                "%DOC%"
+            ],
+            "env": {}
+        },
+        {
+            "name": "latexmk-lualatex-shell-escape",
+            "command": "latexmk",
+            "args": [
+                "--shell-escape",
+                "-lualatex",
+                "-interaction=nonstopmode",
+                "-synctex=1",
+                "%DOC%"
+            ],
+            "env": {}
+        },
+        {
+            "name": "xelatex-shell-escape",
+            "command": "xelatex",
+            "args": [
+                "--shell-escape",
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "%DOC%"
+            ]
+        }
+[% else %]
+        {
+            "name": "latexmk-shell-escape",
+            "command": "latexmk",
+            "args": [
+                "--shell-escape",
+                "-pdf",
+                "-interaction=nonstopmode",
+                "-synctex=1",
+                "%DOC%"
+            ],
+            "env": {}
+        },
+        {
+            "name": "pdflatex-shell-escape",
+            "command": "pdflatex",
+            "args": [
+                "--shell-escape",
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "%DOC%"
+            ]
+        }
+[% endif %]
+    ],
+    "latex-workshop.latex.autoBuild.run": "onSave",
+    "latex-workshop.latex.autoBuild.enabled": true,
+    "latex-workshop.latex.build.showOutput": "always",
+    "latex-workshop.latex.outDir": "%DIR%",
+    "latex-workshop.latex.clean.subfolder.enabled": true,
+    "latex-workshop.message.badbox.show": "none",
+    "workbench.editor.pinnedTabsOnSeparateRow": true,
+    "ltex.latex.commands": {
+        "\\\\author{}": "ignore",
+        "\\\\IfFileExists{}{}": "ignore",
+        "\\\\todo{}": "ignore",
+        "\\\\todo[]{}": "ignore",
+        "\\\\ts{}": "ignore",
+        "\\\\cp{}": "ignore",
+        "\\\\pgfmathprintnumber{}": "dummy",
+        "\\\\feelpp{}": "dummy",
+        "\\\\pgfplotstableread[]{}": "ignore",
+        "\\\\xpatchcmd{}{}{}{}{}": "ignore"
+    },
+    "ltex.enabled": true,
+    "ltex.language": "en-US"
+[% endif %]
+}

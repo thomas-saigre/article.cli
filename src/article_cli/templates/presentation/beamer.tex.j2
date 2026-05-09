@@ -1,0 +1,68 @@
+\documentclass[aspectratio=[[ aspect_ratio ]]]{beamer}
+
+% Theme configuration
+[[ theme_line ]]
+
+% Essential packages
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% Bibliography (optional)
+% \usepackage[style=numeric,sorting=none]{biblatex}
+% \addbibresource{references.bib}
+
+% Git version information
+\usepackage{gitinfo2}
+
+% Title and authors
+\title{[[ title ]]}
+\author{[[ authors_latex ]]}
+\date{\today}
+\institute{Your Institution}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{Introduction}
+  \begin{itemize}
+    \item First point
+    \item Second point
+    \item Third point
+  \end{itemize}
+\end{frame}
+
+\section{Main Content}
+
+\begin{frame}{Main Content}
+  Your main content goes here.
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Conclusion}
+  \begin{itemize}
+    \item Summary point 1
+    \item Summary point 2
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Questions?}
+  \centering
+  \Large Thank you for your attention!
+
+  \vspace{1cm}
+  \small
+  Git version: \gitAbbrevHash{} (\gitAuthorIsoDate)
+\end{frame}
+
+\end{document}
