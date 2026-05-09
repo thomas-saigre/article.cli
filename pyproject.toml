@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "article-cli"
-version = "1.5.0"
+version = "2.0.0"
 authors = [
     {name = "Christophe Prud'homme", email = "prudhomm@cemosis.fr"},
 ]
