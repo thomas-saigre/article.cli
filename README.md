@@ -398,6 +398,12 @@ MIT License - see LICENSE file for details.
 
 ## Changelog
 
+### v1.5.0
+- Add read-only `doctor` diagnostics with JSON output
+- Split CLI implementation into command modules
+- Make setup hooks more robust and worktree-safe
+- Standardize development and CI workflows on `uv`
+
 ### v1.4.0
 - Add full Typst document compilation support
 - New `TypstCompiler` class for Typst documents

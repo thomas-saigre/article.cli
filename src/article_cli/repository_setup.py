@@ -1016,7 +1016,7 @@ jobs:
           uv venv .venv --python 3.11
           echo "VIRTUAL_ENV=${{PWD}}/.venv" >> $GITHUB_ENV
           echo "${{PWD}}/.venv/bin" >> $GITHUB_PATH
-          uv pip install "article-cli>=1.4.0"
+          uv pip install "article-cli>=1.5.0"
           end_time=$(date +%s)
           duration=$((end_time - start_time))
 
@@ -1024,7 +1024,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Tool**: UV (fast Python package installer)" >> $GITHUB_STEP_SUMMARY
           echo "- **Python**: 3.11 (isolated virtual environment)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package**: article-cli>=1.4.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: article-cli>=1.5.0" >> $GITHUB_STEP_SUMMARY
           echo "- **Duration**: ${{duration}}s" >> $GITHUB_STEP_SUMMARY
           echo "- **Cache**: Enabled for faster subsequent runs" >> $GITHUB_STEP_SUMMARY
 
@@ -1071,6 +1071,35 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           article-cli config show >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run article-cli doctor diagnostics
+        continue-on-error: true
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🩺 article-cli Doctor" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Running read-only repository diagnostics. This step is non-blocking; build and artifact checks remain authoritative." >> $GITHUB_STEP_SUMMARY
+
+          set +e
+          article-cli doctor --json > article-cli-doctor.json
+          doctor_status=$?
+          set -e
+
+          python -m json.tool article-cli-doctor.json > /tmp/article-cli-doctor.pretty.json
+          errors=$(python -c 'import json; print(json.load(open("article-cli-doctor.json"))["summary"]["errors"])')
+          warnings=$(python -c 'import json; print(json.load(open("article-cli-doctor.json"))["summary"]["warnings"])')
+
+          echo "- **Exit code**: $doctor_status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors**: $errors" >> $GITHUB_STEP_SUMMARY
+          echo "- **Warnings**: $warnings" >> $GITHUB_STEP_SUMMARY
+          echo "- **JSON artifact**: \`article-cli-doctor.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>Doctor JSON</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/article-cli-doctor.pretty.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
 
       - name: Update bibliography from Zotero
         run: |
@@ -1176,6 +1205,7 @@ jobs:
             ./*.gin
             ./*.bbl
             ./*.tikz
+            ./article-cli-doctor.json
             ./${{{{ needs.workflow-setup.outputs.pdf }}}}{additional_artifact_files}
             ./README.md
             ./fig-*
@@ -1234,7 +1264,7 @@ jobs:
           uv venv .venv --python 3.11
           echo "VIRTUAL_ENV=${{PWD}}/.venv" >> $GITHUB_ENV
           echo "${{PWD}}/.venv/bin" >> $GITHUB_PATH
-          uv pip install "article-cli>=1.4.0"
+          uv pip install "article-cli>=1.5.0"
           end_time=$(date +%s)
           duration=$((end_time - start_time))
 
@@ -1466,7 +1496,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "article-cli>=1.4.0",
+    "article-cli>=1.5.0",
     # Add other dependencies your project might need:
     # "matplotlib>=3.5.0",
     # "numpy>=1.20.0",

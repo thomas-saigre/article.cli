@@ -66,15 +66,15 @@ If automated publishing fails, you can upload the first version manually:
 
 ```bash
 # Build the package
-python -m build
+uv build
 
 # Upload to PyPI (you'll be prompted for credentials)
-python -m twine upload dist/*
+uv run twine upload dist/*
 
 # Or with token
 export TWINE_USERNAME=__token__
 export TWINE_PASSWORD=pypi-your_token_here
-python -m twine upload dist/*
+uv run twine upload dist/*
 ```
 
 ## Testing the Upload
@@ -83,10 +83,10 @@ For testing, you can use TestPyPI:
 
 ```bash
 # Upload to TestPyPI first
-python -m twine upload --repository testpypi dist/*
+uv run twine upload --repository testpypi dist/*
 
 # Install from TestPyPI to test
-pip install --index-url https://test.pypi.org/simple/ article-cli
+uv tool install --index-url https://test.pypi.org/simple/ article-cli
 ```
 
 ## Troubleshooting
@@ -119,6 +119,6 @@ gh run list --limit 5
 gh run view [run-id] --log
 
 # Test build locally
-python -m build
-python -m twine check dist/*
+uv build
+uv run twine check dist/*
 ```
