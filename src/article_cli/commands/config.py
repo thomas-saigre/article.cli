@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import Config
-from ..zotero import print_error, print_info
+from ..reporting import print_error, print_info
 
 
 def add_parser(subparsers: Any) -> None:

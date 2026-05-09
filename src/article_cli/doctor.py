@@ -18,6 +18,7 @@ from .git_hooks import (
     MANAGED_HOOK_START,
     render_gitinfo2_metadata,
 )
+from .project_context import ProjectContext
 
 
 @dataclass
@@ -104,6 +105,7 @@ class DoctorService:
         self.main_document: Optional[Path] = None
         self.engine: str = "latexmk"
         self.output_dir: Optional[Path] = None
+        self.project_context: Optional[ProjectContext] = None
         self.dirty_tracked_files: List[str] = []
 
     def run(
@@ -208,51 +210,25 @@ class DoctorService:
         """Resolve document, engine, config, project type, and output path."""
         project_root = self.repo_root or self.cwd
         config_file = self.config.loaded_config_file
-        project_config = self.config.get_project_config()
-        latex_config = self.config.get_latex_config()
-        documents_config = self.config.get_documents_config()
-        workflow_config = self.config.get_workflow_config()
-        typst_config = self.config.get_typst_config()
-
         self.context["config_file"] = str(config_file) if config_file else None
-        self.context["project_type"] = project_config.get("project_type", "article")
 
-        document_name = document or documents_config.get("main") or ""
-        if not document_name:
-            document_name = self._auto_detect_document(project_root) or ""
+        self.project_context = ProjectContext.resolve(
+            self.config,
+            cwd=project_root,
+            document=document,
+            engine=engine,
+            output_dir=output_dir,
+        )
+        self.context.update(self.project_context.as_doctor_context())
 
-        if document_name:
-            doc_path = Path(document_name)
-            if not doc_path.is_absolute():
-                doc_path = project_root / doc_path
-            self.main_document = doc_path.resolve()
+        self.main_document = self.project_context.document
+        if self.main_document is not None:
             self.context["main_document"] = str(self.main_document)
-        else:
-            self.context["main_document"] = None
 
-        explicit_engine = engine is not None
-        self.engine = engine or str(latex_config.get("engine") or "latexmk")
-        if (
-            self.main_document
-            and self.main_document.suffix == ".typ"
-            and not explicit_engine
-        ):
-            self.engine = "typst"
-        self.context["engine"] = self.engine
-
-        resolved_output = output_dir
-        if not resolved_output:
-            if self.engine == "typst":
-                resolved_output = typst_config.get("build_dir") or workflow_config.get(
-                    "output_dir"
-                )
-            else:
-                resolved_output = workflow_config.get("output_dir") or latex_config.get(
-                    "build_dir"
-                )
-
-        if resolved_output and resolved_output != ".":
-            output_path = Path(str(resolved_output))
+        self.engine = self.project_context.engine
+        resolved_output = self.project_context.output_dir
+        if resolved_output is not None and str(resolved_output) != ".":
+            output_path = resolved_output
             if not output_path.is_absolute():
                 output_path = project_root / output_path
             self.output_dir = output_path.resolve()
@@ -731,24 +707,6 @@ class DoctorService:
         if self.output_dir is not None:
             return self.output_dir / pdf_name
         return self.main_document.with_suffix(".pdf")
-
-    def _auto_detect_document(self, project_root: Path) -> Optional[str]:
-        """Auto-detect a main .tex or .typ file."""
-        for patterns in [
-            ["main.tex", "article.tex", f"{project_root.name}.tex"],
-            ["main.typ", "article.typ", f"{project_root.name}.typ"],
-        ]:
-            for pattern in patterns:
-                if (project_root / pattern).exists():
-                    return pattern
-
-        tex_files = sorted(project_root.glob("*.tex"))
-        if tex_files:
-            return tex_files[0].name
-        typ_files = sorted(project_root.glob("*.typ"))
-        if typ_files:
-            return typ_files[0].name
-        return None
 
     def _git(
         self, args: List[str], cwd: Optional[Path] = None

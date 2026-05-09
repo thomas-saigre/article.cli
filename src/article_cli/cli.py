@@ -22,7 +22,7 @@ from .commands import release as release_command
 from .commands import setup as setup_command
 from .commands import themes as themes_command
 from .config import Config
-from .zotero import print_error
+from .reporting import print_error
 
 CommandHandler = Callable[[argparse.Namespace, Config], int]
 

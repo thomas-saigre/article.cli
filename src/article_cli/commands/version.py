@@ -7,7 +7,8 @@ from typing import Any
 
 from ..config import Config
 from ..git_manager import GitManager
-from ..zotero import print_error
+from ..reporting import print_error
+from ..services.gitinfo import GitInfoService
 
 
 def add_parser(subparsers: Any) -> None:
@@ -31,8 +32,8 @@ def add_parser(subparsers: Any) -> None:
 def run(args: argparse.Namespace, config: Config) -> int:
     """Handle the version command."""
     try:
-        git_manager = GitManager()
-        return 0 if git_manager.refresh_version_metadata(args.dry_run) else 1
+        service = GitInfoService(manager_cls=GitManager)
+        return 0 if service.refresh(args.dry_run) else 1
     except (RuntimeError, ValueError) as e:
         print_error(str(e))
         return 1

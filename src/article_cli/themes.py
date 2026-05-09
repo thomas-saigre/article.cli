@@ -11,7 +11,7 @@ from typing import List, Dict, Optional, Any
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
-from .zotero import print_error, print_info, print_success, print_warning
+from .reporting import print_error, print_info, print_success, print_warning
 
 # Default theme sources
 DEFAULT_THEME_SOURCES: Dict[str, Dict[str, Any]] = {

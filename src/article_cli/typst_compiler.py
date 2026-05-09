@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .config import Config
-from .zotero import print_error, print_info, print_success
+from .reporting import print_error, print_info, print_success
 
 
 class TypstCompiler:

@@ -6,8 +6,9 @@ import argparse
 from typing import Any
 
 from ..config import Config
+from ..reporting import print_error
 from ..repository_setup import RepositorySetup
-from ..zotero import print_error
+from ..services.workflow import WorkflowService
 
 
 def add_parser(subparsers: Any) -> None:
@@ -87,10 +88,10 @@ def run(args: argparse.Namespace, config: Config) -> int:
     try:
         authors = [a.strip() for a in args.authors.split(",")]
 
-        repo_setup = RepositorySetup()
+        service = WorkflowService(setup_cls=RepositorySetup)
         return (
             0
-            if repo_setup.init_repository(
+            if service.initialize_repository(
                 title=args.title,
                 authors=authors,
                 group_id=args.group_id,

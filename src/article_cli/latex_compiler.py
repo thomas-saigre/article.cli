@@ -10,22 +10,32 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from .command_runner import DEFAULT_RUNNER, CommandRunner
 from .config import Config
 from .git_hooks import gitinfo2_metadata_summary, refresh_gitinfo2_metadata
-from .zotero import print_error, print_info, print_success
+from .reporting import print_error, print_info, print_success
+
+ENGINE_RUNNERS = {
+    "latexmk": "_run_latexmk",
+    "pdflatex": "_run_pdflatex",
+    "xelatex": "_run_xelatex",
+    "lualatex": "_run_lualatex",
+}
 
 
 class LaTeXCompiler:
     """Handles LaTeX document compilation with various engines and options"""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, runner: CommandRunner = DEFAULT_RUNNER):
         """
         Initialize LaTeX compiler
 
         Args:
             config: Configuration instance
+            runner: Command execution boundary
         """
         self.config = config
+        self.runner = runner
         self.latex_config = config.get_latex_config()
         self.timeout = int(self.latex_config.get("timeout", 300))
 
@@ -71,17 +81,11 @@ class LaTeXCompiler:
         self, tex_path: Path, engine: str, shell_escape: bool, output_dir: Optional[str]
     ) -> bool:
         """Compile document once"""
-        if engine == "latexmk":
-            return self._run_latexmk(tex_path, shell_escape, output_dir)
-        elif engine == "pdflatex":
-            return self._run_pdflatex(tex_path, shell_escape, output_dir)
-        elif engine == "xelatex":
-            return self._run_xelatex(tex_path, shell_escape, output_dir)
-        elif engine == "lualatex":
-            return self._run_lualatex(tex_path, shell_escape, output_dir)
-        else:
+        runner_name = ENGINE_RUNNERS.get(engine)
+        if runner_name is None:
             print_error(f"Unknown engine: {engine}")
             return False
+        return bool(getattr(self, runner_name)(tex_path, shell_escape, output_dir))
 
     def _compile_watch(
         self, tex_path: Path, engine: str, shell_escape: bool, output_dir: Optional[str]
@@ -103,26 +107,14 @@ class LaTeXCompiler:
                 tex_path, shell_escape, output_dir, continuous=True
             )
 
-            process = subprocess.Popen(
+            process = self.runner.popen(
                 cmd,
                 cwd=tex_path.parent,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                universal_newlines=True,
-                bufsize=1,
             )
 
             # Stream output in real time
             try:
-                while True:
-                    if process.stdout is None:
-                        break
-                    output = process.stdout.readline()
-                    if output == "" and process.poll() is not None:
-                        break
-                    if output:
-                        print(output.strip())
-
+                self.runner.stream_lines(process)
             except KeyboardInterrupt:
                 print_info("\nStopping watch mode...")
                 process.terminate()
@@ -143,37 +135,17 @@ class LaTeXCompiler:
 
         try:
             print_info(f"Running: {' '.join(cmd)}")
-            result = subprocess.run(
+            result = self.runner.run(
                 cmd,
                 cwd=tex_path.parent,
-                capture_output=True,
-                text=True,
                 timeout=self.timeout,
             )
 
             if result.returncode == 0:
-                pdf_name = tex_path.with_suffix(".pdf").name
-                if output_dir:
-                    pdf_path = Path(output_dir) / pdf_name
-                else:
-                    pdf_path = tex_path.with_suffix(".pdf")
-
-                if pdf_path.exists():
-                    print_success(f"✅ Compilation successful: {pdf_path}")
-                    self._show_pdf_info(pdf_path)
-                else:
-                    print_error("Compilation reported success but PDF not found")
-                    return False
-
-                return True
+                return self._verify_pdf(tex_path, output_dir)
             else:
                 print_error("❌ Compilation failed")
-                if result.stdout:
-                    print("STDOUT:")
-                    print(result.stdout)
-                if result.stderr:
-                    print("STDERR:")
-                    print(result.stderr)
+                self._print_process_output(result)
                 return False
 
         except subprocess.TimeoutExpired:
@@ -188,55 +160,7 @@ class LaTeXCompiler:
     ) -> bool:
         """Run pdflatex compilation (multiple passes for cross-references)"""
         cmd = self._build_pdflatex_command(tex_path, shell_escape, output_dir)
-
-        try:
-            # Run multiple passes for cross-references, bibliography, etc.
-            passes = ["First pass", "Second pass", "Third pass"]
-
-            for i, pass_name in enumerate(passes):
-                print_info(f"{pass_name}...")
-                result = subprocess.run(
-                    cmd,
-                    cwd=tex_path.parent,
-                    capture_output=True,
-                    text=True,
-                    timeout=self.timeout,
-                )
-
-                if result.returncode != 0:
-                    print_error(f"❌ {pass_name} failed")
-                    if result.stdout:
-                        print("STDOUT:")
-                        print(result.stdout)
-                    if result.stderr:
-                        print("STDERR:")
-                        print(result.stderr)
-                    return False
-
-                # Check if we need to run bibtex/biber
-                if i == 0:  # After first pass
-                    self._run_bibliography_if_needed(tex_path, result.stdout)
-
-            pdf_name = tex_path.with_suffix(".pdf").name
-            if output_dir:
-                pdf_path = Path(output_dir) / pdf_name
-            else:
-                pdf_path = tex_path.with_suffix(".pdf")
-
-            if pdf_path.exists():
-                print_success(f"✅ Compilation successful: {pdf_path}")
-                self._show_pdf_info(pdf_path)
-                return True
-            else:
-                print_error("Compilation reported success but PDF not found")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print_error("Compilation timed out")
-            return False
-        except Exception as e:
-            print_error(f"Compilation error: {e}")
-            return False
+        return self._run_engine_passes(tex_path, cmd, output_dir)
 
     def _build_latexmk_command(
         self,
@@ -316,55 +240,7 @@ class LaTeXCompiler:
     ) -> bool:
         """Run xelatex compilation (multiple passes for cross-references)"""
         cmd = self._build_xelatex_command(tex_path, shell_escape, output_dir)
-
-        try:
-            # Run multiple passes for cross-references, bibliography, etc.
-            passes = ["First pass", "Second pass", "Third pass"]
-
-            for i, pass_name in enumerate(passes):
-                print_info(f"{pass_name} (xelatex)...")
-                result = subprocess.run(
-                    cmd,
-                    cwd=tex_path.parent,
-                    capture_output=True,
-                    text=True,
-                    timeout=self.timeout,
-                )
-
-                if result.returncode != 0:
-                    print_error(f"❌ {pass_name} failed")
-                    if result.stdout:
-                        print("STDOUT:")
-                        print(result.stdout)
-                    if result.stderr:
-                        print("STDERR:")
-                        print(result.stderr)
-                    return False
-
-                # Check if we need to run bibtex/biber
-                if i == 0:  # After first pass
-                    self._run_bibliography_if_needed(tex_path, result.stdout)
-
-            pdf_name = tex_path.with_suffix(".pdf").name
-            if output_dir:
-                pdf_path = Path(output_dir) / pdf_name
-            else:
-                pdf_path = tex_path.with_suffix(".pdf")
-
-            if pdf_path.exists():
-                print_success(f"✅ Compilation successful: {pdf_path}")
-                self._show_pdf_info(pdf_path)
-                return True
-            else:
-                print_error("Compilation reported success but PDF not found")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print_error("Compilation timed out")
-            return False
-        except Exception as e:
-            print_error(f"Compilation error: {e}")
-            return False
+        return self._run_engine_passes(tex_path, cmd, output_dir, label="xelatex")
 
     def _build_xelatex_command(
         self, tex_path: Path, shell_escape: bool, output_dir: Optional[str]
@@ -395,55 +271,7 @@ class LaTeXCompiler:
     ) -> bool:
         """Run lualatex compilation (multiple passes for cross-references)"""
         cmd = self._build_lualatex_command(tex_path, shell_escape, output_dir)
-
-        try:
-            # Run multiple passes for cross-references, bibliography, etc.
-            passes = ["First pass", "Second pass", "Third pass"]
-
-            for i, pass_name in enumerate(passes):
-                print_info(f"{pass_name} (lualatex)...")
-                result = subprocess.run(
-                    cmd,
-                    cwd=tex_path.parent,
-                    capture_output=True,
-                    text=True,
-                    timeout=self.timeout,
-                )
-
-                if result.returncode != 0:
-                    print_error(f"❌ {pass_name} failed")
-                    if result.stdout:
-                        print("STDOUT:")
-                        print(result.stdout)
-                    if result.stderr:
-                        print("STDERR:")
-                        print(result.stderr)
-                    return False
-
-                # Check if we need to run bibtex/biber
-                if i == 0:  # After first pass
-                    self._run_bibliography_if_needed(tex_path, result.stdout)
-
-            pdf_name = tex_path.with_suffix(".pdf").name
-            if output_dir:
-                pdf_path = Path(output_dir) / pdf_name
-            else:
-                pdf_path = tex_path.with_suffix(".pdf")
-
-            if pdf_path.exists():
-                print_success(f"✅ Compilation successful: {pdf_path}")
-                self._show_pdf_info(pdf_path)
-                return True
-            else:
-                print_error("Compilation reported success but PDF not found")
-                return False
-
-        except subprocess.TimeoutExpired:
-            print_error("Compilation timed out")
-            return False
-        except Exception as e:
-            print_error(f"Compilation error: {e}")
-            return False
+        return self._run_engine_passes(tex_path, cmd, output_dir, label="lualatex")
 
     def _build_lualatex_command(
         self, tex_path: Path, shell_escape: bool, output_dir: Optional[str]
@@ -485,11 +313,9 @@ class LaTeXCompiler:
                 if "\\bibdata" in aux_content:
                     print_info("Running bibtex for bibliography...")
                     try:
-                        subprocess.run(
+                        self.runner.run(
                             ["bibtex", base_name],
                             cwd=tex_path.parent,
-                            capture_output=True,
-                            text=True,
                             timeout=60,
                         )
                     except Exception as e:
@@ -530,15 +356,78 @@ class LaTeXCompiler:
     def _check_command(self, command: str) -> bool:
         """Check if a command is available in PATH"""
         try:
-            result = subprocess.run(
+            result = self.runner.run(
                 [command, "--version"],
-                capture_output=True,
-                text=True,
                 timeout=10,
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
+
+    def _run_engine_passes(
+        self,
+        tex_path: Path,
+        cmd: List[str],
+        output_dir: Optional[str],
+        label: str = "",
+    ) -> bool:
+        """Run a LaTeX engine through the standard three-pass workflow."""
+        try:
+            for pass_index, pass_name in enumerate(
+                ["First pass", "Second pass", "Third pass"]
+            ):
+                suffix = f" ({label})" if label else ""
+                print_info(f"{pass_name}{suffix}...")
+                result = self.runner.run(
+                    cmd,
+                    cwd=tex_path.parent,
+                    timeout=self.timeout,
+                )
+
+                if result.returncode != 0:
+                    print_error(f"❌ {pass_name} failed")
+                    self._print_process_output(result)
+                    return False
+
+                if pass_index == 0:
+                    self._run_bibliography_if_needed(tex_path, result.stdout)
+
+            return self._verify_pdf(tex_path, output_dir)
+
+        except subprocess.TimeoutExpired:
+            print_error("Compilation timed out")
+            return False
+        except Exception as e:
+            print_error(f"Compilation error: {e}")
+            return False
+
+    def _pdf_path(self, tex_path: Path, output_dir: Optional[str]) -> Path:
+        """Return the expected PDF path for a compiled document."""
+        pdf_name = tex_path.with_suffix(".pdf").name
+        if output_dir:
+            return Path(output_dir) / pdf_name
+        return tex_path.with_suffix(".pdf")
+
+    def _verify_pdf(self, tex_path: Path, output_dir: Optional[str]) -> bool:
+        """Verify that compilation produced the expected PDF."""
+        pdf_path = self._pdf_path(tex_path, output_dir)
+        if pdf_path.exists():
+            print_success(f"✅ Compilation successful: {pdf_path}")
+            self._show_pdf_info(pdf_path)
+            return True
+
+        print_error("Compilation reported success but PDF not found")
+        return False
+
+    @staticmethod
+    def _print_process_output(result: subprocess.CompletedProcess) -> None:
+        """Print captured process output when a tool fails."""
+        if result.stdout:
+            print("STDOUT:")
+            print(result.stdout)
+        if result.stderr:
+            print("STDERR:")
+            print(result.stderr)
 
     def print_dependency_status(self) -> None:
         """Print status of LaTeX dependencies"""

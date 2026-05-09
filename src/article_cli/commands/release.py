@@ -7,7 +7,8 @@ from typing import Any
 
 from ..config import Config
 from ..git_manager import GitManager
-from ..zotero import print_error, print_warning
+from ..reporting import print_error, print_warning
+from ..services.release import ReleaseService
 
 
 def add_parser(subparsers: Any) -> None:
@@ -58,12 +59,12 @@ def _add_release_arguments(parser: argparse.ArgumentParser) -> None:
 def run_release(args: argparse.Namespace, config: Config) -> int:
     """Handle the release command."""
     try:
-        git_manager = GitManager()
+        service = ReleaseService(manager_cls=GitManager)
         git_config = config.get_git_config()
         auto_push = getattr(args, "push", False) or git_config.get("auto_push", False)
         return (
             0
-            if git_manager.create_release(
+            if service.create(
                 args.version,
                 auto_push=auto_push,
                 dry_run=getattr(args, "dry_run", False),
@@ -84,8 +85,8 @@ def run_create(args: argparse.Namespace, config: Config) -> int:
 def run_list(args: argparse.Namespace, config: Config) -> int:
     """Handle the list command."""
     try:
-        git_manager = GitManager()
-        return 0 if git_manager.list_releases(args.count) else 1
+        service = ReleaseService(manager_cls=GitManager)
+        return 0 if service.list(args.count) else 1
     except ValueError as e:
         print_error(str(e))
         return 1
@@ -94,8 +95,8 @@ def run_list(args: argparse.Namespace, config: Config) -> int:
 def run_delete(args: argparse.Namespace, config: Config) -> int:
     """Handle the delete command."""
     try:
-        git_manager = GitManager()
-        return 0 if git_manager.delete_release(args.version, args.remote) else 1
+        service = ReleaseService(manager_cls=GitManager)
+        return 0 if service.delete(args.version, args.remote) else 1
     except ValueError as e:
         print_error(str(e))
         return 1

@@ -6,7 +6,9 @@ import argparse
 from typing import Any
 
 from ..config import Config
-from ..zotero import ZoteroBibTexUpdater, print_error, print_info, print_success
+from ..reporting import print_error
+from ..services.bibliography import BibliographyService, BibliographyUpdateOptions
+from ..zotero import ZoteroBibTexUpdater
 
 
 def add_parser(subparsers: Any) -> None:
@@ -55,31 +57,15 @@ def _add_update_arguments(parser: argparse.ArgumentParser) -> None:
 def run(args: argparse.Namespace, config: Config) -> int:
     """Handle the update-bibtex command."""
     try:
-        zotero_config = config.validate_zotero_config(args)
-        dry_run = bool(getattr(args, "dry_run", False))
-
-        if dry_run:
-            library = (
-                f"group {zotero_config['group_id']}"
-                if zotero_config["group_id"]
-                else f"user {zotero_config['user_id']}"
-            )
-            print_info("Dry run: no bibliography files were changed.")
-            print_info(f"Would update bibliography from Zotero {library}.")
-            print_info(f"Would write: {zotero_config['output_file']}")
-            if not getattr(args, "no_backup", False):
-                print_info("Would create a backup if the output file exists.")
-            print_success("Bibliography update dry run completed")
-            return 0
-
-        updater = ZoteroBibTexUpdater(
-            api_key=zotero_config["api_key"],
-            user_id=zotero_config["user_id"],
-            group_id=zotero_config["group_id"],
-            output_file=zotero_config["output_file"],
+        service = BibliographyService(config, updater_cls=ZoteroBibTexUpdater)
+        success = service.update(
+            args,
+            BibliographyUpdateOptions(
+                no_backup=bool(getattr(args, "no_backup", False)),
+                dry_run=bool(getattr(args, "dry_run", False)),
+            ),
         )
-
-        return 0 if updater.update(backup=not args.no_backup) else 1
+        return 0 if success else 1
 
     except (RuntimeError, ValueError) as e:
         print_error(str(e))

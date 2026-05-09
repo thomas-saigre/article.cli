@@ -16,7 +16,7 @@ from .git_hooks import (
     install_managed_gitinfo2_hook,
     refresh_gitinfo2_metadata,
 )
-from .zotero import print_success, print_error, print_warning, print_info, Colors
+from .reporting import Colors, print_error, print_info, print_success, print_warning
 
 
 class GitManager:

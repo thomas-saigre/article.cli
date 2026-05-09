@@ -7,7 +7,8 @@ from typing import Any
 
 from ..config import Config
 from ..git_manager import GitManager
-from ..zotero import print_error
+from ..reporting import print_error
+from ..services.git import GitService
 
 
 def add_parser(subparsers: Any) -> None:
@@ -24,10 +25,8 @@ def add_parser(subparsers: Any) -> None:
 def run(args: argparse.Namespace, config: Config) -> int:
     """Handle the setup command."""
     try:
-        git_manager = GitManager()
-        return (
-            0 if git_manager.setup_hooks(dry_run=getattr(args, "dry_run", False)) else 1
-        )
+        service = GitService(manager_cls=GitManager)
+        return 0 if service.setup_hooks(dry_run=getattr(args, "dry_run", False)) else 1
     except (RuntimeError, ValueError) as e:
         print_error(str(e))
         return 1

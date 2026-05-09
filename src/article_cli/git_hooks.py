@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional
 
-from .zotero import print_info, print_success, print_warning
+from .reporting import print_info, print_success, print_warning
 
 MANAGED_HOOK_START = "# >>> article-cli gitinfo2 hook >>>"
 MANAGED_HOOK_END = "# <<< article-cli gitinfo2 hook <<<"

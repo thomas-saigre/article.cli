@@ -15,7 +15,7 @@ from typing import List, Optional, Sequence, Union
 
 from .git_hooks import ensure_gitinfo2_hook_source
 from .template_renderer import TEMPLATE_VERSION, TemplateRenderer
-from .zotero import print_error, print_info, print_success
+from .reporting import print_error, print_info, print_success
 
 ARTICLE_CLI_MIN_VERSION = "1.5.0"
 ARTICLE_TEMPLATES = {
