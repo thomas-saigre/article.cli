@@ -1,15 +1,17 @@
 """
-Read-only project diagnostics for article-cli.
+Project diagnostics and safe repairs for article-cli.
 """
 
 from __future__ import annotations
 
+import contextlib
+import io
+import importlib
 import json
 import os
 import re
 import shutil
 import subprocess
-import importlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -19,6 +21,7 @@ from .git_hooks import (
     MANAGED_HOOK_START,
     render_gitinfo2_metadata,
 )
+from .git_manager import GitManager
 from .project_context import ProjectContext
 
 
@@ -94,11 +97,15 @@ class DoctorReport:
 
 
 class DoctorService:
-    """Run read-only diagnostics for an article repository."""
+    """Run diagnostics and optional safe repairs for an article repository."""
 
     def __init__(self, config: Config, cwd: Optional[Path] = None):
         self.config = config
         self.cwd = (cwd or Path.cwd()).resolve()
+        self._reset_diagnostics()
+
+    def _reset_diagnostics(self) -> None:
+        """Reset mutable diagnostic state before a run."""
         self.context: Dict[str, Any] = {"cwd": str(self.cwd)}
         self.checks: List[DoctorCheck] = []
         self.repo_root: Optional[Path] = None
@@ -115,8 +122,29 @@ class DoctorService:
         engine: Optional[str] = None,
         output_dir: Optional[str] = None,
         tag: Optional[str] = None,
+        fix: bool = False,
     ) -> DoctorReport:
         """Run all diagnostics."""
+        self._reset_diagnostics()
+        self._run_diagnostics(document, engine, output_dir, tag)
+
+        if fix:
+            fix_checks = self._apply_safe_fixes()
+            self._reset_diagnostics()
+            self._run_diagnostics(document, engine, output_dir, tag)
+            self.context["fix_applied"] = True
+            self.checks = fix_checks + self.checks
+
+        return DoctorReport(context=self.context, checks=self.checks)
+
+    def _run_diagnostics(
+        self,
+        document: Optional[str],
+        engine: Optional[str],
+        output_dir: Optional[str],
+        tag: Optional[str],
+    ) -> None:
+        """Run the diagnostic checks against the current filesystem state."""
         self._check_git()
         self._resolve_project_context(document, engine, output_dir)
         self._check_git_metadata(tag)
@@ -124,7 +152,145 @@ class DoctorService:
         self._check_bibliography()
         self._check_workflow()
         self._check_release_readiness(tag)
-        return DoctorReport(context=self.context, checks=self.checks)
+
+    def _apply_safe_fixes(self) -> List[DoctorCheck]:
+        """Apply non-destructive repairs and return repair diagnostics."""
+        checks: List[DoctorCheck] = []
+        self._fix_output_directory(checks)
+        self._fix_git_setup(checks)
+        return checks
+
+    def _fix_output_directory(self, checks: List[DoctorCheck]) -> None:
+        """Create the configured output directory when it is safe to do so."""
+        if self.output_dir is None:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "output-directory",
+                    "info",
+                    "Output directory is the project root; no repair needed.",
+                )
+            )
+            return
+
+        if self.output_dir.exists() and self.output_dir.is_dir():
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "output-directory",
+                    "info",
+                    "Output directory already exists.",
+                    details={"path": str(self.output_dir)},
+                )
+            )
+            return
+
+        if self.output_dir.exists():
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "output-directory",
+                    "error",
+                    "Output path exists but is not a directory; not modified.",
+                    details={"path": str(self.output_dir)},
+                )
+            )
+            return
+
+        try:
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "output-directory",
+                    "error",
+                    f"Could not create output directory: {e}",
+                    details={"path": str(self.output_dir)},
+                )
+            )
+            return
+
+        checks.append(
+            DoctorCheck(
+                "fix",
+                "output-directory",
+                "ok",
+                "Created output directory.",
+                details={"path": str(self.output_dir)},
+            )
+        )
+
+    def _fix_git_setup(self, checks: List[DoctorCheck]) -> None:
+        """Install managed git hooks and refresh gitinfo2 metadata."""
+        if self.repo_root is None:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "git-hooks",
+                    "warning",
+                    "No Git repository found; hooks and gitHeadLocal.gin were not changed.",
+                    next_command="git init",
+                )
+            )
+            return
+
+        try:
+            manager = GitManager(self.repo_root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                ok = manager.setup_hooks(dry_run=False)
+        except Exception as e:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "git-hooks",
+                    "error",
+                    f"Could not install managed git hooks: {e}",
+                )
+            )
+            return
+
+        if ok:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "git-hooks",
+                    "ok",
+                    "Installed or updated managed gitinfo2 hooks safely.",
+                )
+            )
+        else:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "git-hooks",
+                    "error",
+                    "Managed git hooks could not be installed.",
+                )
+            )
+            return
+
+        metadata_path = self.repo_root / "gitHeadLocal.gin"
+        if metadata_path.exists():
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "gitHeadLocal",
+                    "ok",
+                    "Refreshed gitHeadLocal.gin.",
+                    details={"path": str(metadata_path)},
+                )
+            )
+        else:
+            checks.append(
+                DoctorCheck(
+                    "fix",
+                    "gitHeadLocal",
+                    "warning",
+                    "gitHeadLocal.gin was not refreshed; make an initial commit first.",
+                    next_command="git commit",
+                )
+            )
 
     def _check_git(self) -> None:
         """Resolve and check git repository state."""

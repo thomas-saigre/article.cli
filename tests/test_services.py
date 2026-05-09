@@ -238,6 +238,7 @@ def test_git_release_and_workflow_services_delegate_to_implementation():
     assert FakeGitManager.instances[1].calls == [
         ("tag_exists", "v1.0.0"),
         ("dirty_files", True),
+        ("dirty_files", True),
         ("list_releases", 3),
         ("delete_release", "v1.0.0", True),
     ]

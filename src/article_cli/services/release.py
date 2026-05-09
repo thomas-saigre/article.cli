@@ -344,6 +344,7 @@ class ReleaseService:
         """Print the release plan without modifying files."""
         print_info("Dry run: no tags, commits, builds, or release files were changed.")
         print_info(f"Would create tag: {options.tag}")
+        self._print_git_diagnostics(label="Current")
         if options.force:
             print_info("Would move existing local tag because --force is set.")
         if options.bibliography != "off":
@@ -368,14 +369,128 @@ class ReleaseService:
         """Print auditable release summary."""
         print_success(f"Release {options.tag} is ready.")
         print_info(f"Repository: {self.manager.repo_root}")
-        if pdf_path is not None:
-            print_info(f"PDF: {pdf_path}")
-        if checksum_path is not None:
-            print_info(f"Checksum: {checksum_path}")
+        self._print_git_diagnostics(label="Release")
+        self._print_release_assets(pdf_path, checksum_path)
 
     def _print_rollback(self, tag: str) -> None:
         """Print rollback guidance for a local tag created by this command."""
         print_info(f"Rollback local tag with: git tag -d {tag}")
+
+    def _print_git_diagnostics(self, label: str) -> None:
+        """Print git state and dirty state without mutating the repository."""
+        branch = self._git_output(["branch", "--show-current"])
+        commit = self._git_output(["rev-parse", "--short", "HEAD"])
+        describe = self._git_output(
+            ["describe", "--tags", "--long", "--always", "--dirty=-*"]
+        )
+        exact_tag = self._git_output(["describe", "--tags", "--exact-match"])
+
+        if branch or commit or describe:
+            parts = []
+            if branch:
+                parts.append(f"branch {branch}")
+            if commit:
+                parts.append(f"commit {commit}")
+            if describe:
+                parts.append(f"describe {describe}")
+            print_info(f"{label} git state: {'; '.join(parts)}")
+        if exact_tag:
+            print_info(f"{label} tag: {exact_tag}")
+
+        dirty_files = self._dirty_files()
+        if not dirty_files:
+            print_info(f"{label} dirty files: none")
+            return
+
+        print_warning(f"{label} dirty files: {len(dirty_files)}")
+        for dirty_file in dirty_files[:5]:
+            print_info(f"  {dirty_file}")
+        if len(dirty_files) > 5:
+            print_info(f"  ... and {len(dirty_files) - 5} more")
+
+    def _print_release_assets(
+        self,
+        pdf_path: Optional[Path],
+        checksum_path: Optional[Path],
+    ) -> None:
+        """Print release asset paths and verifiable metadata."""
+        assets = [path for path in [pdf_path, checksum_path] if path is not None]
+        if not assets:
+            print_info("Release assets: none")
+            return
+
+        print_info("Release assets:")
+        if pdf_path is not None:
+            print_info(f"  PDF: {pdf_path}")
+            self._print_pdf_metadata(pdf_path)
+        if checksum_path is not None:
+            print_info(f"  Checksum: {checksum_path}")
+            digest = self._checksum_digest(checksum_path)
+            if digest:
+                print_info(f"  SHA256: {digest}")
+
+    def _print_pdf_metadata(self, pdf_path: Path) -> None:
+        """Print basic PDF metadata useful for release checks."""
+        if not pdf_path.exists():
+            print_warning(f"  PDF missing: {pdf_path}")
+            return
+
+        size_mb = pdf_path.stat().st_size / (1024 * 1024)
+        print_info(f"  PDF size: {size_mb:.2f} MB")
+        pages = self._pdf_page_count(pdf_path)
+        if pages is not None:
+            print_info(f"  PDF pages: {pages}")
+
+    def _pdf_page_count(self, pdf_path: Path) -> Optional[str]:
+        """Return PDF page count through pdfinfo when available."""
+        if shutil.which("pdfinfo") is None:
+            return None
+        try:
+            result = self.runner.run(["pdfinfo", str(pdf_path)], timeout=10)
+        except Exception:
+            return None
+        if result.returncode != 0:
+            return None
+        stdout = str(result.stdout or "")
+        for line in stdout.splitlines():
+            if line.startswith("Pages:"):
+                page_count = line.split(":", 1)[1].strip()
+                return page_count or None
+        return None
+
+    def _checksum_digest(self, checksum_path: Path) -> Optional[str]:
+        """Return the digest recorded in a sha256 sidecar file."""
+        if not checksum_path.exists():
+            return None
+        first_line = checksum_path.read_text(errors="replace").splitlines()[0:1]
+        if not first_line:
+            return None
+        digest = first_line[0].split()[0]
+        return digest or None
+
+    def _git_output(self, args: Sequence[str]) -> Optional[str]:
+        """Run a git command through the manager when supported."""
+        git = getattr(self.manager, "git", None)
+        if git is None:
+            return None
+        try:
+            result = git(list(args))
+        except Exception:
+            return None
+        if result.returncode != 0:
+            return None
+        output = str(result.stdout or "").strip()
+        return output or None
+
+    def _dirty_files(self) -> Sequence[str]:
+        """Return dirty files through the manager when supported."""
+        dirty_files = getattr(self.manager, "dirty_files", None)
+        if dirty_files is None:
+            return []
+        try:
+            return [str(path) for path in dirty_files(ignore_gitinfo=True)]
+        except Exception:
+            return ["<could not inspect git status>"]
 
 
 def validate_tag(tag: str, policy: str = "paper") -> bool:

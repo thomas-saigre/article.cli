@@ -1,5 +1,5 @@
 """
-Read-only project diagnostics command.
+Project diagnostics command.
 """
 
 import argparse
@@ -34,6 +34,14 @@ def add_parser(subparsers: Any) -> None:
         help="Release tag to validate for release readiness.",
     )
     parser.add_argument(
+        "--fix",
+        action="store_true",
+        help=(
+            "Apply safe repairs: create output directories, install managed "
+            "git hooks, and refresh gitHeadLocal.gin."
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit stable machine-readable JSON.",
@@ -48,6 +56,7 @@ def run(args: argparse.Namespace, config: Config) -> int:
         engine=args.engine,
         output_dir=args.output_dir,
         tag=args.tag,
+        fix=args.fix,
     )
 
     if args.json:

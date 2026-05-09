@@ -2,10 +2,16 @@
 Tests for transactional release helpers.
 """
 
+import subprocess
 from pathlib import Path
 
 from article_cli.config import Config
-from article_cli.services.release import ReleaseOptions, ReleaseService, validate_tag
+from article_cli.services.release import (
+    ReleaseOptions,
+    ReleaseService,
+    validate_tag,
+    write_sha256,
+)
 
 
 class FakeGitManager:
@@ -68,6 +74,7 @@ def test_release_dry_run_does_not_create_tag(tmp_path):
     assert FakeGitManager.instances[-1].calls == [
         ("tag_exists", "v1"),
         ("dirty_files", True),
+        ("dirty_files", True),
     ]
 
 
@@ -118,3 +125,69 @@ def test_release_prints_rollback_guidance_after_post_tag_failure(
 
     assert ("create_tag", "v1", False) in FakeGitManager.instances[-1].calls
     assert "Rollback local tag with: git tag -d v1" in capsys.readouterr().out
+
+
+def test_release_summary_prints_assets_git_state_and_checksums(
+    tmp_path, monkeypatch, capsys
+):
+    """Release summary should expose enough diagnostics to audit artifacts."""
+
+    class DiagnosticGitManager(FakeGitManager):
+        instances = []
+
+        def git(self, args):
+            command = tuple(args)
+            self.calls.append(("git", command))
+            outputs = {
+                ("branch", "--show-current"): "main\n",
+                ("rev-parse", "--short", "HEAD"): "abc1234\n",
+                (
+                    "describe",
+                    "--tags",
+                    "--long",
+                    "--always",
+                    "--dirty=-*",
+                ): "v1-0-gabc1234\n",
+                ("describe", "--tags", "--exact-match"): "v1\n",
+            }
+            if command in outputs:
+                return subprocess.CompletedProcess(args, 0, outputs[command], "")
+            return subprocess.CompletedProcess(args, 1, "", "")
+
+    class PdfInfoRunner:
+        def run(self, command, **kwargs):
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout="Title: paper\nPages:          4\n",
+                stderr="",
+            )
+
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4")
+    checksum_path = write_sha256(pdf_path)
+    monkeypatch.setattr(
+        "article_cli.services.release.shutil.which",
+        lambda command: "/usr/bin/pdfinfo" if command == "pdfinfo" else None,
+    )
+    service = ReleaseService(
+        Config(quiet=True),
+        repo_root=tmp_path,
+        manager_cls=DiagnosticGitManager,
+        runner=PdfInfoRunner(),
+    )
+    options = service._resolve_options(
+        ReleaseOptions(tag="v1", compile_pdf=False, check_pdf=False)
+    )
+
+    service._print_summary(options, pdf_path, checksum_path)
+
+    output = capsys.readouterr().out
+    assert "Release git state:" in output
+    assert "Release tag: v1" in output
+    assert "Release dirty files: none" in output
+    assert "Release assets:" in output
+    assert f"PDF: {pdf_path}" in output
+    assert "PDF pages: 4" in output
+    assert f"Checksum: {checksum_path}" in output
+    assert "SHA256:" in output

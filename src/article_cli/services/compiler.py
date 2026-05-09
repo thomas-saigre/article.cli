@@ -70,6 +70,13 @@ class CompilerService:
         if context.document.suffix == ".typ" and context.engine != TYPST_ENGINE:
             print_info("Detected Typst file, switching engine to typst")
 
+        print_info(f"Resolved document: {context.document}")
+        print_info(f"Selected engine: {context.engine}")
+        print_info(f"Output directory: {context.output_dir_name or '.'}")
+        if context.engine != TYPST_ENGINE:
+            shell_escape = "enabled" if context.shell_escape else "disabled"
+            print_info(f"Shell escape: {shell_escape}")
+
         if context.engine == TYPST_ENGINE:
             return self._compile_typst(context, options)
 

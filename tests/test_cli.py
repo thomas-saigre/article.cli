@@ -261,6 +261,7 @@ def test_parser_config_backed_defaults_are_none():
     assert canonical_bib_args.output is None
     assert doctor_args.engine is None
     assert doctor_args.output_dir is None
+    assert doctor_args.fix is False
     assert setup_args.dry_run is True
     assert version_args.dry_run is True
     assert release_args.dry_run is True

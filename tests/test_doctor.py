@@ -167,3 +167,76 @@ def test_doctor_reports_existing_release_tag(tmp_path, monkeypatch):
         check.category == "release" and check.name == "tag" and check.status == "error"
         for check in report.checks
     )
+
+
+def test_doctor_fix_repairs_safe_repository_state(tmp_path, monkeypatch):
+    """doctor --fix creates only safe setup files and does not create commits."""
+    monkeypatch.chdir(tmp_path)
+    init_git_repository(tmp_path)
+    (tmp_path / "main.tex").write_text("\\documentclass{article}\n")
+    (tmp_path / "references.bib").write_text("@misc{test,title={Test}}\n")
+    (tmp_path / "pyproject.toml").write_text(
+        """
+[tool.article-cli.project]
+type = "article"
+
+[tool.article-cli.documents]
+main = "main.tex"
+
+[tool.article-cli.latex]
+engine = "pdflatex"
+
+[tool.article-cli.workflow]
+output_dir = "build"
+
+[tool.article-cli.zotero]
+api_key = "test-key"
+group_id = "4709047"
+output_file = "references.bib"
+"""
+    )
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    head_before = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    def fake_which(command):
+        return f"/usr/bin/{command}"
+
+    monkeypatch.setattr("article_cli.doctor.shutil.which", fake_which)
+    report = DoctorService(
+        Config(tmp_path / "pyproject.toml", quiet=True), cwd=tmp_path
+    ).run(fix=True)
+
+    head_after = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert head_after == head_before
+    assert (tmp_path / "build").is_dir()
+    assert (tmp_path / "hooks" / "post-commit").exists()
+    assert (tmp_path / ".git" / "hooks" / "post-commit").exists()
+    assert (tmp_path / "gitHeadLocal.gin").exists()
+    assert any(
+        check.category == "fix"
+        and check.name == "output-directory"
+        and check.status == "ok"
+        for check in report.checks
+    )
+    assert any(
+        check.category == "fix" and check.name == "git-hooks" and check.status == "ok"
+        for check in report.checks
+    )

@@ -5,6 +5,8 @@ Provides compilation functionality that mimics LaTeX Workshop configuration
 with support for latexmk and pdflatex engines.
 """
 
+import re
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -13,7 +15,7 @@ from typing import Dict, List, Optional
 from .command_runner import DEFAULT_RUNNER, CommandRunner
 from .config import Config
 from .git_hooks import gitinfo2_metadata_summary, refresh_gitinfo2_metadata
-from .reporting import print_error, print_info, print_success
+from .reporting import print_error, print_info, print_success, print_warning
 
 ENGINE_RUNNERS = {
     "latexmk": "_run_latexmk",
@@ -150,6 +152,10 @@ class LaTeXCompiler:
 
         except subprocess.TimeoutExpired:
             print_error(f"Compilation timed out after {self.timeout} seconds")
+            return False
+        except FileNotFoundError:
+            print_error(f"Required build tool not found: {cmd[0]}")
+            print_info("Run article-cli doctor for full toolchain diagnostics.")
             return False
         except Exception as e:
             print_error(f"Compilation error: {e}")
@@ -397,6 +403,10 @@ class LaTeXCompiler:
         except subprocess.TimeoutExpired:
             print_error("Compilation timed out")
             return False
+        except FileNotFoundError:
+            print_error(f"Required build tool not found: {cmd[0]}")
+            print_info("Run article-cli doctor for full toolchain diagnostics.")
+            return False
         except Exception as e:
             print_error(f"Compilation error: {e}")
             return False
@@ -414,10 +424,68 @@ class LaTeXCompiler:
         if pdf_path.exists():
             print_success(f"✅ Compilation successful: {pdf_path}")
             self._show_pdf_info(pdf_path)
+            self._show_pdf_diagnostics(tex_path, pdf_path, output_dir)
             return True
 
         print_error("Compilation reported success but PDF not found")
         return False
+
+    def _show_pdf_diagnostics(
+        self, tex_path: Path, pdf_path: Path, output_dir: Optional[str]
+    ) -> None:
+        """Print lightweight diagnostics for the generated PDF and LaTeX log."""
+        self._show_pdf_page_count(pdf_path)
+        self._show_latex_log_diagnostics(tex_path, output_dir)
+
+    def _show_pdf_page_count(self, pdf_path: Path) -> None:
+        """Print PDF page count when pdfinfo is available."""
+        if shutil.which("pdfinfo") is None:
+            return
+        try:
+            result = self.runner.run(["pdfinfo", str(pdf_path)], timeout=10)
+        except Exception:
+            return
+        if result.returncode != 0:
+            return
+        match = re.search(r"^Pages:\s+(\d+)", result.stdout, re.MULTILINE)
+        if match:
+            print_info(f"PDF pages: {match.group(1)}")
+
+    def _show_latex_log_diagnostics(
+        self, tex_path: Path, output_dir: Optional[str]
+    ) -> None:
+        """Print common LaTeX warning counts from the generated log."""
+        log_path = self._log_path(tex_path, output_dir)
+        if not log_path.exists():
+            return
+
+        content = log_path.read_text(errors="replace")
+        undefined_citations = len(
+            re.findall(r"LaTeX Warning: Citation .* undefined", content)
+        )
+        undefined_references = len(
+            re.findall(
+                r"LaTeX Warning: Reference .* undefined|There were undefined references",
+                content,
+            )
+        )
+        overfull_boxes = len(re.findall(r"Overfull \\hbox", content))
+
+        if undefined_citations:
+            print_warning(f"Undefined citations: {undefined_citations}")
+        if undefined_references:
+            print_warning(f"Undefined references: {undefined_references}")
+        if overfull_boxes:
+            print_warning(f"Overfull boxes: {overfull_boxes}")
+        if not (undefined_citations or undefined_references or overfull_boxes):
+            print_info("No undefined citations/references or overfull boxes reported.")
+
+    def _log_path(self, tex_path: Path, output_dir: Optional[str]) -> Path:
+        """Return the expected LaTeX log path for a compiled document."""
+        log_name = tex_path.with_suffix(".log").name
+        if output_dir:
+            return Path(output_dir) / log_name
+        return tex_path.with_suffix(".log")
 
     @staticmethod
     def _print_process_output(result: subprocess.CompletedProcess) -> None:

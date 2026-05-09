@@ -130,8 +130,11 @@ class TestTypstCompilerCompilation:
         assert result is False
 
     @patch("subprocess.run")
-    def test_compile_once_success(self, mock_run, compiler, mock_typ_path, tmp_path):
+    def test_compile_once_success(
+        self, mock_run, compiler, mock_typ_path, tmp_path, monkeypatch
+    ):
         """Test successful Typst compilation"""
+        monkeypatch.setattr("article_cli.typst_compiler.shutil.which", lambda _: None)
         # Create mock PDF file
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_bytes(b"%PDF-1.4 mock pdf content")
@@ -174,8 +177,11 @@ class TestTypstCompilerCompilation:
         assert result is False
 
     @patch("subprocess.run")
-    def test_compile_with_font_paths(self, mock_run, compiler, mock_typ_path, tmp_path):
+    def test_compile_with_font_paths(
+        self, mock_run, compiler, mock_typ_path, tmp_path, monkeypatch
+    ):
         """Test compilation with custom font paths"""
+        monkeypatch.setattr("article_cli.typst_compiler.shutil.which", lambda _: None)
         pdf_file = tmp_path / "test.pdf"
         pdf_file.write_bytes(b"%PDF-1.4 mock pdf content")
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
@@ -189,6 +195,27 @@ class TestTypstCompilerCompilation:
         assert "--font-path" in call_args
         assert "fonts/custom" in call_args
         assert result is True
+
+    @patch("subprocess.run")
+    def test_compile_once_reports_pdf_page_count(
+        self, mock_run, compiler, mock_typ_path, tmp_path, monkeypatch, capsys
+    ):
+        """Successful Typst compilation should report page count when available."""
+        monkeypatch.setattr(
+            "article_cli.typst_compiler.shutil.which",
+            lambda command: "/usr/bin/pdfinfo" if command == "pdfinfo" else None,
+        )
+        pdf_file = tmp_path / "test.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4 mock pdf content")
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="", stderr=""),
+            MagicMock(returncode=0, stdout="Pages:          3\n", stderr=""),
+        ]
+
+        result = compiler._compile_once(mock_typ_path, None, [])
+
+        assert result is True
+        assert "PDF pages: 3" in capsys.readouterr().out
 
 
 class TestTypstCompilerDependencies:
