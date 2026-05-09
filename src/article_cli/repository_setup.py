@@ -997,7 +997,7 @@ jobs:
           clean: true
 
       - name: Set up Python and uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           version: "latest"
           enable-cache: false
@@ -1246,7 +1246,7 @@ jobs:
           path: ${{{{ github.workspace }}}}/artifact
       -
         name: Set up Python and uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           version: "latest"
           enable-cache: false

@@ -57,7 +57,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v8.1.0
       - run: article-cli compile main.tex
 """)
 
