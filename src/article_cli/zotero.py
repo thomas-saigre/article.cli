@@ -299,10 +299,13 @@ class ZoteroBibTexUpdater:
         import re
 
         # Pattern to match BibTeX entries
-        entry_pattern = r"@\w+\{[^,]*,\s*\}"
+        entry_pattern_empty = r"@\w+\{[^,]*,\s*\}"
+        entry_pattern_keywords = r"@\w+\{[^,]*,\s*keywords\s*=\s*\{[^}]*\},*\s*\}"
 
         # Find all empty entries (those with just the citation key and closing brace)
-        empty_entries = re.findall(entry_pattern, content)
+        empty_entries = re.findall(entry_pattern_empty, content)
+        # Find all entries that only have a keywords field
+        empty_entries += re.findall(entry_pattern_keywords, content)
 
         if not empty_entries:
             return content, 0
